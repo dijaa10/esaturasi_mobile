@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'detail_artikel_screen.dart'; // Import file DetailArtikelScreen
 
 class ArtikelScreen extends StatelessWidget {
   const ArtikelScreen({Key? key}) : super(key: key);
@@ -37,52 +38,68 @@ class ArtikelScreen extends StatelessWidget {
         padding: const EdgeInsets.all(10),
         itemCount: articles.length,
         itemBuilder: (context, index) {
-          return _buildArticleCard(articles[index]);
+          return _buildArticleCard(context, articles[index]);
         },
       ),
     );
   }
 
-  Widget _buildArticleCard(Map<String, String> article) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 15),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      elevation: 4,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: Image.asset(
-              article['image']!,
-              width: double.infinity,
-              height: 180,
-              fit: BoxFit.cover,
+  Widget _buildArticleCard(BuildContext context, Map<String, String> article) {
+    return GestureDetector(
+      onTap: () {
+        // Navigasi ke halaman detail artikel
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailArtikelScreen(
+              title: article['title']!,
+              image: article['image']!,
+              time: article['time']!,
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  article['title']!,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
+        );
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 4,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
+              child: Image.asset(
+                article['image']!,
+                width: double.infinity,
+                height: 180,
+                fit: BoxFit.cover,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    article['title']!,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  '${article['time']}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 10),
-                ),
-              ],
+                  const SizedBox(height: 5),
+                  Text(
+                    '${article['time']}',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 10),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
