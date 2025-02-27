@@ -2,43 +2,71 @@ import 'package:flutter/material.dart';
 
 class DetailArtikelScreen extends StatelessWidget {
   final String title;
-  final String image;
-  final String time;
+  final String content;
+  final String? arsipPath;
+  final String baseUrl = 'http://10.0.2.2:8000';
 
-  DetailArtikelScreen(
-      {required this.title, required this.image, required this.time});
+  const DetailArtikelScreen({
+    Key? key,
+    required this.title,
+    required this.content,
+    this.arsipPath,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.blue,
         title:
             const Text('Detail Artikel', style: TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        centerTitle: true,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Image.asset(image,
-                fit: BoxFit.cover, width: double.infinity, height: 200),
+            // Menampilkan gambar jika tersedia
+            if (arsipPath != null)
+              Container(
+                width: double.infinity,
+                height: 200,
+                child: Image.network(
+                  '$baseUrl/storage/$arsipPath',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 200,
+                      color: Colors.grey[300],
+                      child: Center(
+                        child: Icon(Icons.image_not_supported,
+                            size: 50, color: Colors.grey[600]),
+                      ),
+                    );
+                  },
+                ),
+              ),
             Padding(
-              padding: EdgeInsets.all(10),
+              padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  SizedBox(height: 10),
-                  Text(time, style: TextStyle(color: Colors.grey)),
-                  SizedBox(height: 10),
-                  Divider(),
+                  SizedBox(height: 16),
                   Text(
-                    'Pada hari yang ditunggu-tunggu, acara wisuda siswa SMK Negeri 1 Sumberasih berlangsung dengan penuh kemeriahan dan haru. Kegiatan yang dilaksanakan di [lokasi wisuda] ini dihadiri oleh para siswa, orang tua, guru, serta tamu undangan, menjadikan hari tersebut sebagai momen istimewa bagi semua yang hadir.Acara dimulai dengan sambutan hangat dari Kepala Sekolah, yang mengapresiasi kerja keras para siswa selama menempuh pendidikan. Dalam sambutannya, beliau menyampaikan rasa bangga atas pencapaian siswa, baik dalam bidang akademik maupun non-akademik. "Hari ini adalah puncak dari segala usaha dan perjuangan kalian. Tetaplah bersemangat, karena ini bukan akhir, melainkan awal dari perjalanan yang lebih menantang di masa depan," ungkapnya. Kenangan Manis Bersama Wisuda tidak hanya menjadi perayaan kelulusan, tetapi juga momen untuk mengenang kebersamaan selama di sekolah. Para siswa terlihat saling memberikan ucapan selamat dan berfoto bersama, mengenang perjalanan panjang yang mereka tempuh bersama-sama. Tawa, air mata, dan canda tawa mewarnai suasana, menciptakan kenangan manis yang akan mereka bawa ke mana pun mereka pergi. Salah satu siswa yang diwawancarai, Dwi Yulianti, mengungkapkan perasaannya. "Ini adalah momen yang sangat berarti bagi saya. Tidak hanya karena akhirnya kami lulus, tetapi juga karena kami telah melalui banyak hal bersama. Saya akan sangat merindukan teman-teman dan guru-guru di sini," katanya sambil tersenyum.',
-                    style: TextStyle(fontSize: 16),
+                    content,
+                    style: TextStyle(fontSize: 14),
                   ),
                 ],
               ),

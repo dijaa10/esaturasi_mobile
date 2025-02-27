@@ -1,16 +1,113 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'beranda.dart';
 
 class Login extends StatefulWidget {
-  const Login({Key? key}) : super(key: key);
-
   @override
-  State<Login> createState() => _LoginState();
+  _LoginState createState() => _LoginState();
 }
 
 class _LoginState extends State<Login> {
+  final TextEditingController nisnController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
   bool _obscureText = true;
+  bool _isLoading = false;
 
+  // Fungsi untuk melakukan login
+  Future<void> login() async {
+    // Ganti URL sesuai dengan alamat API Laravel Anda
+    const String url = 'http://127.0.0.1:8000/api/siswa/login';
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Kirim request ke API Laravel
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({
+          'nisn': nisnController.text,
+          'password': passwordController.text,
+        }),
+      );
+
+      print("Status Code: ${response.statusCode}");
+      print("Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['status'] == 'success') {
+          // Simpan token dan data siswa ke SharedPreferences
+          await saveUserData(data);
+
+          // Navigasi ke halaman beranda
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => Beranda()),
+          );
+        } else {
+          // Tampilkan pesan error dari API
+          showErrorSnackbar(data['message'] ?? 'Login gagal');
+        }
+      } else if (response.statusCode == 401) {
+        showErrorSnackbar('NISN atau password salah');
+      } else {
+        // Tampilkan error umum
+        showErrorSnackbar('Gagal menghubungi server (${response.statusCode})');
+      }
+    } catch (e) {
+      print("Error during login: $e");
+      showErrorSnackbar('Terjadi kesalahan. Periksa koneksi internet Anda!');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Menyimpan data user setelah login berhasil
+  Future<void> saveUserData(Map<String, dynamic> data) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Simpan token autentikasi
+    if (data['token'] != null) {
+      await prefs.setString('token', data['token']);
+    }
+
+    // Simpan data siswa
+    if (data['siswa'] != null) {
+      await prefs.setString('siswa_id', data['siswa']['id'].toString());
+      await prefs.setString('nisn', data['siswa']['nisn']);
+      await prefs.setString('nama', data['siswa']['nama']);
+      await prefs.setString('kelas_id', data['siswa']['kelas_id'].toString());
+      await prefs.setString(
+          'jurusan_id', data['siswa']['jurusan_id'].toString());
+    }
+
+    // Set status login
+    await prefs.setBool('isLoggedIn', true);
+  }
+
+  // Menampilkan pesan error
+  void showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  // Toggle visibility password
   void _togglePasswordVisibility() {
     setState(() {
       _obscureText = !_obscureText;
@@ -29,7 +126,7 @@ class _LoginState extends State<Login> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  "Loginn",
+                  "Login Siswa",
                   style: TextStyle(
                     fontSize: 35,
                     fontWeight: FontWeight.bold,
@@ -54,14 +151,51 @@ class _LoginState extends State<Login> {
                   ),
                   child: Column(
                     children: [
-                      _buildTextField(Icons.person, 'Masukkan NISN', false),
+                      TextField(
+                        controller: nisnController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: Icon(Icons.person, color: Colors.black54),
+                          hintText: 'Masukkan NISN',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 18),
-                      _buildPasswordField(),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: _obscureText,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: Icon(Icons.lock, color: Colors.black54),
+                          suffixIcon: GestureDetector(
+                            onTap: _togglePasswordVisibility,
+                            child: Icon(
+                              _obscureText
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          hintText: 'Password',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 2),
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            // Tambahkan fungsi lupa password di sini
+                          },
                           child: const Text(
                             'Lupa password?',
                             style: TextStyle(color: Colors.white),
@@ -70,12 +204,7 @@ class _LoginState extends State<Login> {
                       ),
                       const SizedBox(height: 10),
                       ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => Beranda()),
-                          );
-                        },
+                        onPressed: _isLoading ? null : login,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF5C9EDB),
                           shape: RoundedRectangleBorder(
@@ -83,14 +212,19 @@ class _LoginState extends State<Login> {
                           ),
                           minimumSize: const Size(double.infinity, 50),
                         ),
-                        child: const Text(
-                          'Kirim',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? CircularProgressIndicator(
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              )
+                            : const Text(
+                                'Masuk',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -98,45 +232,6 @@ class _LoginState extends State<Login> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(IconData icon, String hintText, bool obscureText) {
-    return TextField(
-      obscureText: obscureText,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        prefixIcon: Icon(icon, color: Colors.black54),
-        hintText: hintText,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return TextField(
-      obscureText: _obscureText,
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        prefixIcon: const Icon(Icons.lock, color: Colors.black54),
-        suffixIcon: GestureDetector(
-          onTap: _togglePasswordVisibility,
-          child: Icon(
-            _obscureText ? Icons.visibility_off : Icons.visibility,
-            color: Colors.black54,
-          ),
-        ),
-        hintText: 'Password',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
         ),
       ),
     );

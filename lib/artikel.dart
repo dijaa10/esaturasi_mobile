@@ -1,32 +1,44 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'detail_artikel_screen.dart'; // Import file DetailArtikelScreen
+import 'package:http/http.dart' as http;
+import 'detail_artikel_screen.dart'; // Halaman detail artikel
+import 'model/pengumuman.dart'; // Model pengumuman
 
-class ArtikelScreen extends StatelessWidget {
+class ArtikelScreen extends StatefulWidget {
   const ArtikelScreen({Key? key}) : super(key: key);
+  @override
+  _ArtikelScreenState createState() => _ArtikelScreenState();
+}
+
+class _ArtikelScreenState extends State<ArtikelScreen> {
+  List<Pengumuman> pengumumanList = [];
+  final String baseUrl = 'http://10.0.2.2:8000';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchPengumuman();
+  }
+
+  Future<void> fetchPengumuman() async {
+    final response = await http.get(Uri.parse('$baseUrl/api/pengumuman'));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      List<Pengumuman> tempList = (data['pengumuman'] as List)
+          .map((json) => Pengumuman.fromJson(json))
+          .toList();
+
+      setState(() {
+        pengumumanList = tempList;
+      });
+    } else {
+      throw Exception('Gagal mengambil data pengumuman');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, String>> articles = [
-      {
-        'image': 'assets/images/artikel/wisuda.png',
-        'title':
-            'Meriah dan Penuh Haru, Wisuda Siswa SMK Negeri 1 Sumberasih Tahun Ini Menjadi Momen Tak Terlupakan',
-        'time': '30 menit yang lalu',
-      },
-      {
-        'image': 'assets/images/artikel/sepakbola.png',
-        'title':
-            'Tim Sepak Bola SMK Negeri 1 Sumberasih Raih Gelar Juara dalam Turnamen Antar Sekolah',
-        'time': '1 hari yang lalu',
-      },
-      {
-        'image': 'assets/images/artikel/kunjungan.png',
-        'title':
-            'Semangat Tinggi! Siswa SMK Persiapkan Diri untuk Magang di Luar Negeri',
-        'time': '3 hari yang lalu',
-      },
-    ];
-
     return Scaffold(
       backgroundColor: Color(0xFFE9EDF6),
       appBar: AppBar(
@@ -34,27 +46,28 @@ class ArtikelScreen extends StatelessWidget {
         title: const Text('Artikel', style: TextStyle(color: Colors.white)),
         centerTitle: true,
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(10),
-        itemCount: articles.length,
-        itemBuilder: (context, index) {
-          return _buildArticleCard(context, articles[index]);
-        },
-      ),
+      body: pengumumanList.isEmpty
+          ? Center(child: CircularProgressIndicator())
+          : ListView.builder(
+              padding: const EdgeInsets.all(10),
+              itemCount: pengumumanList.length,
+              itemBuilder: (context, index) {
+                return _buildArticleCard(context, pengumumanList[index]);
+              },
+            ),
     );
   }
 
-  Widget _buildArticleCard(BuildContext context, Map<String, String> article) {
+  Widget _buildArticleCard(BuildContext context, Pengumuman pengumuman) {
     return GestureDetector(
       onTap: () {
-        // Navigasi ke halaman detail artikel
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => DetailArtikelScreen(
-              title: article['title']!,
-              image: article['image']!,
-              time: article['time']!,
+              title: pengumuman.judul,
+              content: pengumuman.content,
+              arsipPath: pengumuman.arsipPath, // Kirim path gambar
             ),
           ),
         );
@@ -68,23 +81,34 @@ class ArtikelScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
-              child: Image.asset(
-                article['image']!,
-                width: double.infinity,
-                height: 180,
-                fit: BoxFit.cover,
+            // Menampilkan gambar jika tersedia
+            if (pengumuman.arsipPath != null)
+              ClipRRect(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                child: Image.network(
+                  '$baseUrl/storage/${pengumuman.arsipPath}',
+                  height: 150,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 100,
+                      color: Colors.grey[300],
+                      child: Center(
+                        child: Icon(Icons.image_not_supported,
+                            color: Colors.grey[600]),
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    article['title']!,
+                    pengumuman.judul,
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -92,7 +116,9 @@ class ArtikelScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    '${article['time']}',
+                    pengumuman.content,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: Colors.grey[600], fontSize: 10),
                   ),
                 ],

@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Aplikasi E-Saturasi',
-      home: HalamanActivity(),
+      home: Login(),
     );
   }
 }
