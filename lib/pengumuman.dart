@@ -45,6 +45,13 @@ class _PengumumanScreenState extends State<PengumumanScreen> {
     }
   }
 
+  String potongDeskripsi(String deskripsi, int jumlahHuruf) {
+    if (deskripsi.length > jumlahHuruf) {
+      return deskripsi.substring(0, jumlahHuruf) + '...';
+    }
+    return deskripsi;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -106,8 +113,10 @@ class _PengumumanScreenState extends State<PengumumanScreen> {
                             ),
                             SizedBox(height: 5),
                             Text(
-                              pengumuman['deskripsi_pengumuman'] ??
-                                  "Tidak ada deskripsi",
+                              potongDeskripsi(
+                                  pengumuman['deskripsi_pengumuman'] ??
+                                      "Tidak ada deskripsi",
+                                  130), // Batasi deskripsi hingga 100 huruf
                               style: TextStyle(
                                   fontSize: 14, color: Colors.black87),
                             ),
