@@ -16,16 +16,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String namaKelas = "Memuat...";
   String namaJurusan = "Memuat...";
   String fotoProfil = "";
-  final String baseUrl =
-      "http://127.0.0.1:8000/"; // Ganti dengan URL server Anda
-
+  final String baseUrl = "http://127.0.0.1:8000/";
   @override
   void initState() {
     super.initState();
     _loadUserData();
   }
 
-  // 🔹 Fungsi untuk mengambil data dari SharedPreferences
+  // untuk mengambil data dari SharedPreferences
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -46,7 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (idJurusan != null) _fetchJurusan(idJurusan);
   }
 
-  // 🔹 Fungsi untuk mengambil nama kelas dari API
+  // untuk mengambil nama kelas dari API
   Future<void> _fetchKelas(String idKelas) async {
     try {
       final response =
@@ -64,7 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // 🔹 Fungsi untuk mengambil nama jurusan dari API
+  // untuk mengambil nama jurusan dari API
   Future<void> _fetchJurusan(String idJurusan) async {
     try {
       final response =
@@ -82,7 +80,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // 🔹 Fungsi Logout
+  // Fungsi Logout
   Future<void> _logout(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();

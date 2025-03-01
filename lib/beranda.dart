@@ -1,6 +1,8 @@
+import 'package:esaturasi/halaman_activity.dart';
 import 'package:flutter/material.dart';
 import 'pengumuman.dart';
 import 'halaman_activity.dart';
+import 'home.dart';
 import 'profile.dart';
 
 class Beranda extends StatefulWidget {
@@ -15,7 +17,7 @@ class _BerandaState extends State<Beranda> {
 
   // Daftar halaman berdasarkan indeks
   final List<Widget> _pages = [
-    HalamanActivity(),
+    HomeScreen(),
     PengumumanScreen(),
     ProfileScreen(),
   ];

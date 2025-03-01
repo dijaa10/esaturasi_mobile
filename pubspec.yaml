@@ -15,7 +15,13 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^0.13.4
   shared_preferences: ^2.5.2
+  intl: ^0.19.0  
   timeago: ^3.6.0
+  table_calendar: ^3.0.0
+
+
+  flutter_localizations:
+    sdk: flutter  
 
 dev_dependencies:
   flutter_test:
@@ -35,5 +41,3 @@ flutter:
     - assets/images/ic_tugasnew.png
     - assets/images/ic_mapelnew.png
     - assets/images/ic_kalendernew.png
-
-    
