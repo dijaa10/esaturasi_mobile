@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:timeago/timeago.dart' as timeago;
-import 'package:timeago/timeago.dart' as timeago;
 
 class PengumumanScreen extends StatefulWidget {
   @override
@@ -12,14 +11,12 @@ class PengumumanScreen extends StatefulWidget {
 
 class _PengumumanScreenState extends State<PengumumanScreen> {
   List<dynamic> _pengumumanList = [];
-  final String apiUrl =
-      'http://127.0.0.1:8000/api/pengumuman'; // Sesuaikan dengan API backend
+  final String apiUrl = 'http://127.0.0.1:8000/api/pengumuman';
 
   @override
   void initState() {
     super.initState();
-    timeago.setLocaleMessages(
-        'id', timeago.IdMessages()); // Atur bahasa Indonesia
+    timeago.setLocaleMessages('id', timeago.IdMessages());
     ambilPengumuman();
   }
 
@@ -42,8 +39,7 @@ class _PengumumanScreenState extends State<PengumumanScreen> {
   String waktuBerlalu(String tanggal) {
     try {
       DateTime dateTime = DateTime.parse(tanggal);
-      return timeago.format(dateTime,
-          locale: 'id'); // Format dalam bahasa Indonesia
+      return timeago.format(dateTime, locale: 'id');
     } catch (e) {
       return "Waktu tidak valid";
     }
@@ -67,10 +63,9 @@ class _PengumumanScreenState extends State<PengumumanScreen> {
                 final pengumuman = _pengumumanList[index];
 
                 Uint8List? gambarBytes;
-                if (pengumuman['content_pengumuman'] != null) {
+                if (pengumuman['gambar'] != null) {
                   try {
-                    gambarBytes =
-                        base64Decode(pengumuman['content_pengumuman']);
+                    gambarBytes = base64Decode(pengumuman['gambar']);
                   } catch (e) {
                     print("Kesalahan saat mengubah gambar: $e");
                   }
@@ -83,7 +78,6 @@ class _PengumumanScreenState extends State<PengumumanScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Menampilkan gambar jika ada
                       gambarBytes != null
                           ? ClipRRect(
                               borderRadius: BorderRadius.vertical(
@@ -109,6 +103,13 @@ class _PengumumanScreenState extends State<PengumumanScreen> {
                               pengumuman['judul_pengumuman'] ?? "Tanpa Judul",
                               style: TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              pengumuman['deskripsi_pengumuman'] ??
+                                  "Tidak ada deskripsi",
+                              style: TextStyle(
+                                  fontSize: 14, color: Colors.black87),
                             ),
                             SizedBox(height: 5),
                             Row(
