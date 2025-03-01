@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'artikel.dart';
+import 'pengumuman.dart';
 import 'home.dart';
 import 'profile.dart';
 
@@ -14,7 +14,7 @@ class _BerandaState extends State<Beranda> {
   // Daftar halaman berdasarkan indeks
   final List<Widget> _pages = [
     HomeScreen(),
-    ArtikelScreen(),
+    PengumumanScreen(),
     ProfileScreen(),
   ];
 

@@ -17,7 +17,6 @@ class _LoginState extends State<Login> {
 
   // Fungsi untuk melakukan login
   Future<void> login() async {
-    // Ganti URL sesuai dengan alamat API Laravel Anda
     const String url = 'http://127.0.0.1:8000/api/siswa/login';
 
     setState(() {
