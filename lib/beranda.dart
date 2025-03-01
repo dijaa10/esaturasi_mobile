@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'pengumuman.dart';
-import 'home.dart';
+import 'halaman_activity.dart';
 import 'profile.dart';
 
 class Beranda extends StatefulWidget {
+  const Beranda({super.key});
+
   @override
   _BerandaState createState() => _BerandaState();
 }
@@ -13,7 +15,7 @@ class _BerandaState extends State<Beranda> {
 
   // Daftar halaman berdasarkan indeks
   final List<Widget> _pages = [
-    HomeScreen(),
+    HalamanActivity(),
     PengumumanScreen(),
     ProfileScreen(),
   ];
@@ -37,7 +39,7 @@ class _BerandaState extends State<Beranda> {
         unselectedItemColor: Colors.grey, // Warna saat tidak aktif
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+            icon: Icon(Icons.dashboard),
             label: 'Home',
           ),
           BottomNavigationBarItem(

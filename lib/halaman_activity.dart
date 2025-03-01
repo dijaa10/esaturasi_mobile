@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 
-class HalamanActivity extends StatelessWidget {
+class HalamanActivity extends StatefulWidget {
+  const HalamanActivity({super.key});
+
+  @override
+  _HalamanActivityState createState() => _HalamanActivityState();
+}
+
+class _HalamanActivityState extends State<HalamanActivity> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
