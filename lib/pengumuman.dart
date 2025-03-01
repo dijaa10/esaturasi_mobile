@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:timeago/timeago.dart' as timeago;
+import 'detail_pengumuman_screen.dart'; // Import halaman detail
 
 class PengumumanScreen extends StatefulWidget {
   @override
@@ -78,65 +79,78 @@ class _PengumumanScreenState extends State<PengumumanScreen> {
                   }
                 }
 
-                return Card(
-                  margin: EdgeInsets.all(10),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      gambarBytes != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(10)),
-                              child: Image.memory(
-                                gambarBytes,
-                                height: 150,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : Container(
-                              height: 150,
-                              color: Colors.grey[300],
-                              child: Center(child: Text("Tidak ada gambar")),
-                            ),
-                      Padding(
-                        padding: EdgeInsets.all(10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              pengumuman['judul_pengumuman'] ?? "Tanpa Judul",
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                            SizedBox(height: 5),
-                            Text(
-                              potongDeskripsi(
-                                  pengumuman['deskripsi_pengumuman'] ??
-                                      "Tidak ada deskripsi",
-                                  130), // Batasi deskripsi hingga 100 huruf
-                              style: TextStyle(
-                                  fontSize: 14, color: Colors.black87),
-                            ),
-                            SizedBox(height: 5),
-                            Row(
-                              children: [
-                                Icon(Icons.access_time,
-                                    size: 16, color: Colors.grey),
-                                SizedBox(width: 5),
-                                Text(
-                                  waktuBerlalu(pengumuman['created_at'] ?? ""),
-                                  style: TextStyle(
-                                      fontSize: 12, color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                return GestureDetector(
+                  onTap: () {
+                    // Navigasi ke halaman detail dengan data pengumuman
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            DetailPengumumanScreen(pengumuman: pengumuman),
                       ),
-                    ],
+                    );
+                  },
+                  child: Card(
+                    margin: EdgeInsets.all(10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        gambarBytes != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(10)),
+                                child: Image.memory(
+                                  gambarBytes,
+                                  height: 150,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : Container(
+                                height: 150,
+                                color: Colors.grey[300],
+                                child: Center(child: Text("Tidak ada gambar")),
+                              ),
+                        Padding(
+                          padding: EdgeInsets.all(10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                pengumuman['judul_pengumuman'] ?? "Tanpa Judul",
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 5),
+                              Text(
+                                potongDeskripsi(
+                                    pengumuman['deskripsi_pengumuman'] ??
+                                        "Tidak ada deskripsi",
+                                    130),
+                                style: TextStyle(
+                                    fontSize: 14, color: Colors.black87),
+                              ),
+                              SizedBox(height: 5),
+                              Row(
+                                children: [
+                                  Icon(Icons.access_time,
+                                      size: 16, color: Colors.grey),
+                                  SizedBox(width: 5),
+                                  Text(
+                                    waktuBerlalu(
+                                        pengumuman['created_at'] ?? ""),
+                                    style: TextStyle(
+                                        fontSize: 12, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
