@@ -20,7 +20,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xFFE9EDF6),
       appBar: AppBar(
         backgroundColor: Colors.blue,
         elevation: 0,

@@ -80,6 +80,7 @@ class _MapelScreenState extends State<MapelScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFFE9EDF6),
       appBar: AppBar(
         title: Text('Mata Pelajaran', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.blue,

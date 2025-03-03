@@ -27,7 +27,7 @@ class Jadwal {
 
 Future<List<Jadwal>> fetchJadwal() async {
   final response = await http.get(
-    Uri.parse('http:/127.0.0.1:8000/jadwal'), // Ganti dengan URL API Anda
+    Uri.parse('http:/127.0.0.1:8000/jadwal'),
     headers: {'Authorization': 'Bearer YOUR_ACCESS_TOKEN'},
   );
 

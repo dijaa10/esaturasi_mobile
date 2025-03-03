@@ -29,14 +29,14 @@ class DetailPengumumanScreen extends StatelessWidget {
     }
 
     return Scaffold(
+      backgroundColor: Color(0xFFE9EDF6),
       appBar: AppBar(
         title: Text(
           'Detail Pengumuman',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: Colors.blueAccent,
-        iconTheme: IconThemeData(
-            color: Colors.white), // Mengubah warna ikon panah menjadi putih
+        iconTheme: IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
         child: Padding(

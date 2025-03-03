@@ -87,7 +87,12 @@ class _LoginState extends State<Login> {
       await prefs.setString('nisn', data['siswa']['nisn']);
       await prefs.setString('nama', data['siswa']['nama']);
       await prefs.setString('email', data['siswa']['email']);
-      await prefs.setString('foto_profil', data['siswa']['foto_profil']);
+      if (data['siswa']['foto_profil'] != null) {
+        prefs.setString('foto_profil', data['siswa']['foto_profil']);
+      } else {
+        prefs.setString('foto_profil', "https://via.placeholder.com/150");
+      }
+
       await prefs.setString('kelas_id', data['siswa']['kelas_id'].toString());
       await prefs.setString(
           'jurusan_id', data['siswa']['jurusan_id'].toString());

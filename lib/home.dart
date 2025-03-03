@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart'; // Import intl untuk format tanggal
+import 'package:intl/date_symbol_data_local.dart'; // Import untuk localization
+import 'package:cached_network_image/cached_network_image.dart'; // Tambahkan package ini untuk mengelola cache gambar
 import 'mapel_screen.dart'; // Import halaman MapelScreen
 import 'calendar_screen.dart'; // Import halaman CalendarScreen
 
@@ -11,17 +13,22 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String nama = "";
-  String nisn = ""; // Ganti email dengan nisn
+  String nisn = "";
   String fotoProfil = "";
   final String baseUrl = "http://127.0.0.1:8000/";
-  String currentDate = ""; // Untuk menyimpan tanggal saat ini
-  String greeting = ""; // Untuk menyimpan greeting message
+  String currentDate = "";
+  String greeting = "";
+  bool isImageLoading = true;
+  bool hasImageError = false;
 
   @override
   void initState() {
     super.initState();
+    // Inisialisasi locale data untuk Bahasa Indonesia
+    initializeDateFormatting('id_ID', null).then((_) {
+      _setCurrentDate(); // Memanggil method untuk mendapatkan tanggal hari ini
+    });
     _loadUserData();
-    _setCurrentDate(); // Memanggil method untuk mendapatkan tanggal hari ini
     _setGreeting(); // Memanggil method untuk menentukan greeting berdasarkan waktu
   }
 
@@ -31,20 +38,40 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       nama = prefs.getString('nama') ?? "Nama Tidak Ditemukan";
-      nisn = prefs.getString('nisn') ??
-          "NISN Tidak Ditemukan"; // Ambil nisn dari SharedPreferences
+      nisn = prefs.getString('nisn') ?? "NISN Tidak Ditemukan";
       String fotoPath = prefs.getString('foto_profil') ?? "";
-      fotoProfil = fotoPath.isNotEmpty
-          ? "${baseUrl}storage/$fotoPath"
-          : "https://via.placeholder.com/150";
+
+      // Pastikan URL foto profil valid
+      if (fotoPath.isNotEmpty) {
+        fotoProfil = "${baseUrl}storage/$fotoPath";
+      } else {
+        fotoProfil = ""; // Set string kosong jika tidak ada foto
+        hasImageError = true;
+      }
     });
+
+    // Cek apakah URL foto valid dengan pre-loading
+    if (fotoProfil.isNotEmpty) {
+      precacheImage(NetworkImage(fotoProfil), context).then((_) {
+        setState(() {
+          isImageLoading = false;
+        });
+      }).catchError((error) {
+        print("Error precaching image: $error");
+        setState(() {
+          hasImageError = true;
+          isImageLoading = false;
+        });
+      });
+    }
   }
 
-  // Method untuk mendapatkan tanggal hari ini
+  // Method untuk mendapatkan tanggal hari ini dengan format Bahasa Indonesia
   void _setCurrentDate() {
     final now = DateTime.now();
     setState(() {
-      currentDate = DateFormat('d MMMM yyyy').format(now); // Format tanggal
+      // Format tanggal dengan locale Indonesia
+      currentDate = DateFormat('d MMMM yyyy', 'id_ID').format(now);
     });
   }
 
@@ -62,12 +89,78 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // Widget untuk menampilkan foto profil dengan penanganan error
+  Widget _buildProfileImage() {
+    if (isImageLoading) {
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: Colors.grey[300],
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
+        ),
+      );
+    } else if (hasImageError || fotoProfil.isEmpty) {
+      // Tampilkan avatar placeholder dengan inisial nama jika ada error atau tidak ada foto
+      return CircleAvatar(
+        radius: 40,
+        backgroundColor: Colors.blueGrey,
+        child: Text(
+          nama.isNotEmpty ? nama[0].toUpperCase() : "?",
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      );
+    } else {
+      // Gunakan CachedNetworkImage untuk caching dan penanganan error yang lebih baik
+      return ClipOval(
+        child: Container(
+          width: 80,
+          height: 80,
+          child: Image.network(
+            fotoProfil,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              print("Error loading image: $error");
+              return CircleAvatar(
+                radius: 40,
+                backgroundColor: Colors.blueGrey,
+                child: Text(
+                  nama.isNotEmpty ? nama[0].toUpperCase() : "?",
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xFFE9EDF6),
       appBar: AppBar(
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.blueAccent,
         elevation: 0,
         title: Text(
           greeting, // Use dynamic greeting
@@ -84,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Container(
             width: double.infinity,
-            color: Colors.blue,
+            color: Colors.blueAccent,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Card(
@@ -96,10 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.all(16.0),
                   child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundImage: NetworkImage(fotoProfil),
-                      ),
+                      _buildProfileImage(), // Gunakan widget khusus untuk foto profil
                       SizedBox(width: 16),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,7 +262,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Text(
-                  currentDate, // Menampilkan tanggal hari ini
+                  currentDate, // Menampilkan tanggal hari ini dalam Bahasa Indonesia
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
