@@ -3,8 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart'; // Import intl untuk format tanggal
 import 'package:intl/date_symbol_data_local.dart'; // Import untuk localization
 import 'package:cached_network_image/cached_network_image.dart'; // Tambahkan package ini untuk mengelola cache gambar
-import 'mapel_screen.dart'; // Import halaman MapelScreen
-import 'calendar_screen.dart'; // Import halaman CalendarScreen
+import 'package:esaturasi/screen/calendar_screen.dart';
+import 'package:esaturasi/screen/mapel_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override

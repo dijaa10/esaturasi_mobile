@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:timeago/timeago.dart' as timeago;
-import 'detail_pengumuman_screen.dart'; // Import halaman detail
+import 'package:esaturasi/screen/detail_pengumuman_screen.dart';
 
 class PengumumanScreen extends StatefulWidget {
   @override

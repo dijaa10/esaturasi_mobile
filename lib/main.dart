@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'login.dart';
-import 'halaman_activity.dart';
 import 'splash_screen.dart';
 
 void main() {
