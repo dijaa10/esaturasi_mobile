@@ -1,22 +1,36 @@
 class Pengumuman {
   final int id;
-  final String judul;
+  final String title;
   final String content;
-  final String? arsipPath;
+  final String date;
 
   Pengumuman({
     required this.id,
-    required this.judul,
+    required this.title,
     required this.content,
-    this.arsipPath,
+    required this.date,
   });
 
   factory Pengumuman.fromJson(Map<String, dynamic> json) {
+    String tanggal = '-';
+    if (json.containsKey('date') &&
+        json['date'] != null &&
+        json['date'].toString().isNotEmpty) {
+      tanggal = json['date'];
+    } else if (json.containsKey('created_at') && json['created_at'] != null) {
+      try {
+        DateTime dateTime = DateTime.parse(json['created_at']);
+        tanggal = "${dateTime.day}-${dateTime.month}-${dateTime.year}";
+      } catch (e) {
+        print("Error parsing created_at: $e");
+      }
+    }
+
     return Pengumuman(
-      id: json['id'],
-      judul: json['judul_pengumuman'],
-      content: json['content_pengumuman'],
-      arsipPath: json['arsip'] != null ? json['arsip']['file_path'] : null,
+      id: json['id'] ?? 0,
+      title: json['title'] ?? 'Tanpa Judul',
+      content: json['content'] ?? '-',
+      date: tanggal,
     );
   }
 }

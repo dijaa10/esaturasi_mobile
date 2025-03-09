@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'login.dart'; // Ganti dengan halaman utama
+import 'login.dart';
+import 'loginpage_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -16,7 +17,7 @@ class _SplashScreenState extends State<SplashScreen> {
     Timer(Duration(seconds: 2), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => Login()),
+        MaterialPageRoute(builder: (context) => LoginPage()),
       );
     });
   }

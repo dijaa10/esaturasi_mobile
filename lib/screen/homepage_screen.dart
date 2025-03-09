@@ -8,6 +8,9 @@ import 'dart:convert'; // Import untuk decode JSON
 import 'package:esaturasi/screen/calendar_screen.dart';
 import 'package:esaturasi/screen/mapel_screen.dart';
 import '../login.dart';
+import '../model/pengumuman_model.dart';
+import 'pengumuman_detail_page.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -29,23 +32,27 @@ class HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _fetchAnnouncements();
     _loadUserData();
     _setGreeting(); // Memanggil method untuk menentukan greeting berdasarkan waktu
   }
 
+  String timeAgo(DateTime date) {
+    return timeago.format(date, locale: 'id');
+  }
+
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
-
     setState(() {
       nama = prefs.getString('nama') ?? "Nama Tidak Ditemukan";
     });
-
     String? idKelas = prefs.getString('kelas_id');
     if (idKelas != null) _fetchKelas(idKelas);
-
     String fotoPath = prefs.getString('foto_profil') ?? "";
+
     if (fotoPath.isNotEmpty) {
       fotoProfil = "${baseUrl}storage/$fotoPath";
+      print("DEBUG - Profile image URL: $fotoProfil"); // Debug print
     } else {
       fotoProfil = "";
       hasImageError = true;
@@ -144,14 +151,31 @@ class HomePageState extends State<HomePage> {
     },
   ];
 
-  final List<Map<String, dynamic>> _announcements = [
-    {
-      'title': 'Jadwal Ujian Praktikum',
-      'content':
-          'Ujian praktikum akan dilaksanakan pada tanggal 15-20 Maret 2025.',
-      'date': '5 Maret 2025',
-    },
-  ];
+  List<Pengumuman> _announcements = [];
+  bool _isLoading = true;
+  Future<void> _fetchAnnouncements() async {
+    try {
+      final response = await http.get(Uri.parse("${baseUrl}api/pengumuman"));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _announcements =
+              data.map((item) => Pengumuman.fromJson(item)).toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        print("Gagal mengambil data pengumuman: ${response.statusCode}");
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print("Error fetching pengumuman: $e");
+    }
+  }
 
   String _getGreeting() {
     var hour = DateTime.now().hour;
@@ -228,18 +252,38 @@ class HomePageState extends State<HomePage> {
                     children: [
                       CircleAvatar(
                         radius: 30,
-                        backgroundImage:
-                            NetworkImage('https://example.com/image.jpg'),
                         backgroundColor: Colors.white,
-                        // Tambahkan border ke avatar
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 2,
-                            ),
-                          ),
+                        child: ClipOval(
+                          child: fotoProfil.isNotEmpty
+                              ? Image.network(
+                                  fotoProfil,
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress
+                                                    .expectedTotalBytes !=
+                                                null
+                                            ? loadingProgress
+                                                    .cumulativeBytesLoaded /
+                                                loadingProgress
+                                                    .expectedTotalBytes!
+                                            : null,
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    print("ERROR loading image: $error");
+                                    return const Icon(Icons.person,
+                                        size: 40, color: Colors.grey);
+                                  },
+                                )
+                              : const Icon(Icons.person,
+                                  size: 40, color: Colors.grey),
                         ),
                       ),
                       const SizedBox(width: 15),
@@ -394,14 +438,23 @@ class HomePageState extends State<HomePage> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _announcements.length,
-                    itemBuilder: (context, index) {
-                      return _buildAnnouncementCard(_announcements[index]);
-                    },
-                  ),
+                  _isLoading
+                      ? const Center(
+                          child:
+                              CircularProgressIndicator()) // Loading indicator
+                      : _announcements.isEmpty
+                          ? const Center(
+                              child:
+                                  Text("Tidak ada pengumuman")) // Jika kosong
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _announcements.length,
+                              itemBuilder: (context, index) {
+                                return _buildAnnouncementCard(
+                                    _announcements[index]);
+                              },
+                            ),
 
                   const SizedBox(height: 20),
                 ],
@@ -607,7 +660,13 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildAnnouncementCard(Map<String, dynamic> announcement) {
+  Widget _buildAnnouncementCard(Pengumuman announcement) {
+    // Format the date here
+    String formattedDate = _formatDate(announcement.date);
+
+    // Extract plain text from content if it contains HTML
+    String plainContent = _extractTextFromHtml(announcement.content);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
@@ -632,7 +691,7 @@ class HomePageState extends State<HomePage> {
               children: [
                 Expanded(
                   child: Text(
-                    announcement['title'],
+                    announcement.title,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -647,7 +706,7 @@ class HomePageState extends State<HomePage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    announcement['date'],
+                    formattedDate,
                     style: const TextStyle(
                       color: Color(0xFF1976D2),
                       fontSize: 12,
@@ -658,8 +717,9 @@ class HomePageState extends State<HomePage> {
               ],
             ),
             const SizedBox(height: 12),
+            // Display plain text without HTML formatting
             Text(
-              announcement['content'],
+              plainContent,
               style: TextStyle(
                 color: Colors.grey[800],
                 height: 1.4,
@@ -669,11 +729,16 @@ class HomePageState extends State<HomePage> {
             Align(
               alignment: Alignment.centerRight,
               child: TextButton.icon(
-                onPressed: () {},
-                icon: const Icon(
-                  Icons.arrow_forward,
-                  size: 16,
-                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          PengumumanDetailPage(announcement: announcement),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.arrow_forward, size: 16),
                 label: const Text('Baca Selengkapnya'),
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF1976D2),
@@ -686,5 +751,58 @@ class HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+
+// Function to extract plain text from HTML content
+  String _extractTextFromHtml(String htmlString) {
+    // Simple regex to remove HTML tags
+    String result = htmlString.replaceAll(RegExp(r'<[^>]*>'), '');
+
+    // Decode HTML entities if needed
+    result = result
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'");
+
+    return result;
+  }
+
+// Function to format regular dates
+  String _formatDate(String dateString) {
+    try {
+      // For dates that might contain HTML, extract text first
+      if (dateString.contains('<')) {
+        dateString = _extractTextFromHtml(dateString);
+      }
+
+      // Try to parse as regular date
+      DateTime date = DateTime.parse(dateString);
+
+      List<String> monthNames = [
+        'Januari',
+        'Februari',
+        'Maret',
+        'April',
+        'Mei',
+        'Juni',
+        'Juli',
+        'Agustus',
+        'September',
+        'Oktober',
+        'November',
+        'Desember'
+      ];
+
+      return "${date.day}-${monthNames[date.month - 1]} ${date.year}";
+    } catch (e) {
+      // If parsing fails, just return cleaned text
+      if (dateString.contains('<')) {
+        return _extractTextFromHtml(dateString);
+      }
+      return dateString;
+    }
   }
 }

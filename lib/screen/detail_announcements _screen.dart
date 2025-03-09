@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:timeago/timeago.dart' as timeago;
+import 'homepage_screen.dart';
 
 class DetailPengumumanScreen extends StatelessWidget {
   final dynamic pengumuman;
