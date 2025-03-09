@@ -162,14 +162,32 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.blueAccent,
         elevation: 0,
-        title: Text(
-          greeting, // Use dynamic greeting
-          style: TextStyle(color: Colors.white, fontSize: 18),
+        title: Row(
+          children: [
+            Icon(Icons.waving_hand, color: Colors.yellow, size: 26),
+            SizedBox(width: 8),
+            Text(
+              greeting,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
             icon: Icon(Icons.notifications, color: Colors.white),
             onPressed: () {},
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: CircleAvatar(
+              backgroundColor: Colors.white,
+              radius: 18,
+              child: Icon(Icons.person, color: Colors.blueAccent),
+            ),
           ),
         ],
       ),
@@ -189,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.all(16.0),
                   child: Row(
                     children: [
-                      _buildProfileImage(), // Gunakan widget khusus untuk foto profil
+                      _buildProfileImage(),
                       SizedBox(width: 16),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,7 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           Text(
-                            nisn, // Menampilkan NISN
+                            nisn,
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:esaturasi/screen/beranda_screen.dart';
+import 'package:esaturasi/screen/elearninghomepage_scren.dart';
 
 class Login extends StatefulWidget {
   @override
@@ -17,6 +17,11 @@ class _LoginState extends State<Login> {
 
   // Fungsi untuk melakukan login
   Future<void> login() async {
+    if (nisnController.text.isEmpty || passwordController.text.isEmpty) {
+      showWarningDialog('Masukkan NISN dan password untuk login.');
+      return;
+    }
+
     const String url = 'http://127.0.0.1:8000/api/siswa/login';
 
     setState(() {
@@ -24,7 +29,6 @@ class _LoginState extends State<Login> {
     });
 
     try {
-      // Kirim request ke API Laravel
       final response = await http.post(
         Uri.parse(url),
         headers: {
@@ -42,29 +46,21 @@ class _LoginState extends State<Login> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         if (data['status'] == 'success') {
-          // Simpan token dan data siswa ke SharedPreferences
           await saveUserData(data);
-
-          // Navigasi ke halaman beranda
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => Beranda()),
-          );
+          showSuccessDialog();
         } else {
-          // Tampilkan pesan error dari API
-          showErrorSnackbar(data['message'] ?? 'Login gagal');
+          showErrorDialog(data['message'] ??
+              'Login gagal. Periksa kembali NISN dan password Anda.');
         }
       } else if (response.statusCode == 401) {
-        showErrorSnackbar('NISN atau password salah');
+        showErrorDialog('NISN atau password salah. Silakan coba lagi.');
       } else {
-        // Tampilkan error umum
-        showErrorSnackbar('Gagal menghubungi server (${response.statusCode})');
+        showErrorDialog('Gagal menghubungi server (${response.statusCode}).');
       }
     } catch (e) {
       print("Error during login: $e");
-      showErrorSnackbar('Terjadi kesalahan. Periksa koneksi internet Anda!');
+      showErrorDialog('Terjadi kesalahan. Periksa koneksi internet Anda.');
     } finally {
       setState(() {
         _isLoading = false;
@@ -72,16 +68,80 @@ class _LoginState extends State<Login> {
     }
   }
 
+  void showSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Login Berhasil'),
+          content: const Text('Anda berhasil masuk!'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => ELearningHomePage()),
+                );
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Fungsi menampilkan pop-up peringatan
+  void showWarningDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Peringatan'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Fungsi menampilkan pop-up jika login gagal
+  void showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Login Gagal'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Menyimpan data user setelah login berhasil
   Future<void> saveUserData(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Simpan token autentikasi
     if (data['token'] != null) {
       await prefs.setString('token', data['token']);
     }
 
-    // Simpan data siswa
     if (data['siswa'] != null) {
       await prefs.setString('siswa_id', data['siswa']['id'].toString());
       await prefs.setString('nisn', data['siswa']['nisn']);
@@ -99,19 +159,7 @@ class _LoginState extends State<Login> {
       print('Foto Profil: ${data['siswa']['foto_profil']}');
     }
 
-    // Set status login
     await prefs.setBool('isLoggedIn', true);
-  }
-
-  // Menampilkan pesan error
-  void showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 3),
-      ),
-    );
   }
 
   // Toggle visibility password

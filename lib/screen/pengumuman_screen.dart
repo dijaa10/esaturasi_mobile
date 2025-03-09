@@ -66,7 +66,22 @@ class _PengumumanScreenState extends State<PengumumanScreen> {
         backgroundColor: Colors.blueAccent,
       ),
       body: _pengumumanList.isEmpty
-          ? Center(child: CircularProgressIndicator())
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.info_outline, size: 80, color: Colors.grey),
+                  SizedBox(height: 10),
+                  Text(
+                    "Tidak ada pengumuman",
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey),
+                  ),
+                ],
+              ),
+            )
           : ListView.builder(
               itemCount: _pengumumanList.length,
               itemBuilder: (context, index) {
