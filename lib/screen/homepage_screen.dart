@@ -10,6 +10,7 @@ import 'package:esaturasi/screen/mapel_screen.dart';
 import '../login.dart';
 import '../model/pengumuman_model.dart';
 import 'pengumuman_detail_page.dart';
+import 'pengumuman_screen.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class HomePage extends StatefulWidget {
@@ -46,32 +47,22 @@ class HomePageState extends State<HomePage> {
     setState(() {
       nama = prefs.getString('nama') ?? "Nama Tidak Ditemukan";
     });
+
     String? idKelas = prefs.getString('kelas_id');
     if (idKelas != null) _fetchKelas(idKelas);
-    String fotoPath = prefs.getString('foto_profil') ?? "";
 
+    String fotoPath = prefs.getString('foto_profil') ?? "";
     if (fotoPath.isNotEmpty) {
-      fotoProfil = "${baseUrl}storage/$fotoPath";
-      print("DEBUG - Profile image URL: $fotoProfil"); // Debug print
+      fotoProfil = "${baseUrl}/storage/$fotoPath";
+      print("DEBUG - Profile image URL: $fotoProfil");
     } else {
       fotoProfil = "";
-      hasImageError = true;
     }
 
-    // Preload gambar untuk memastikan tidak error saat ditampilkan
-    if (fotoProfil.isNotEmpty) {
-      precacheImage(NetworkImage(fotoProfil), context).then((_) {
-        setState(() {
-          isImageLoading = false;
-        });
-      }).catchError((error) {
-        print("Error precaching image: $error");
-        setState(() {
-          hasImageError = true;
-          isImageLoading = false;
-        });
-      });
-    }
+    setState(() {
+      isImageLoading = fotoProfil.isNotEmpty;
+      hasImageError = false;
+    });
   }
 
   Future<void> _fetchKelas(String idKelas) async {
@@ -428,7 +419,14 @@ class HomePageState extends State<HomePage> {
                         ),
                       ),
                       TextButton.icon(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PengumumanScreen(),
+                            ),
+                          );
+                        },
                         icon: const Icon(Icons.arrow_forward),
                         label: const Text('Lihat Semua'),
                         style: TextButton.styleFrom(
@@ -449,13 +447,15 @@ class HomePageState extends State<HomePage> {
                           : ListView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _announcements.length,
+                              // Limit to maximum 2 announcements
+                              itemCount: _announcements.length > 2
+                                  ? 2
+                                  : _announcements.length,
                               itemBuilder: (context, index) {
                                 return _buildAnnouncementCard(
                                     _announcements[index]);
                               },
                             ),
-
                   const SizedBox(height: 20),
                 ],
               ),
@@ -667,6 +667,12 @@ class HomePageState extends State<HomePage> {
     // Extract plain text from content if it contains HTML
     String plainContent = _extractTextFromHtml(announcement.content);
 
+    // Limit content to 100 characters
+    String limitedContent = _limitToChars(plainContent, 115);
+
+    // Check if content was truncatedn
+    bool isTruncated = plainContent != limitedContent;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
@@ -717,9 +723,9 @@ class HomePageState extends State<HomePage> {
               ],
             ),
             const SizedBox(height: 12),
-            // Display plain text without HTML formatting
+            // Display plain text without HTML formatting, limited to 100 characters
             Text(
-              plainContent,
+              limitedContent + (isTruncated ? "..." : ""),
               style: TextStyle(
                 color: Colors.grey[800],
                 height: 1.4,
@@ -796,7 +802,7 @@ class HomePageState extends State<HomePage> {
         'Desember'
       ];
 
-      return "${date.day}-${monthNames[date.month - 1]} ${date.year}";
+      return "${date.day} ${monthNames[date.month - 1]} ${date.year}";
     } catch (e) {
       // If parsing fails, just return cleaned text
       if (dateString.contains('<')) {
@@ -804,5 +810,16 @@ class HomePageState extends State<HomePage> {
       }
       return dateString;
     }
+  }
+
+// New function to limit text to specific number of characters
+  String _limitToChars(String text, int charLimit) {
+    // If the text has fewer characters than the limit, return the original text
+    if (text.length <= charLimit) {
+      return text;
+    }
+
+    // Otherwise, return only the first 'charLimit' characters
+    return text.substring(0, charLimit);
   }
 }

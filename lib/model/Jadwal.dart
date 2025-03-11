@@ -6,35 +6,29 @@ class Jadwal {
   final String mataPelajaran;
   final String jamMulai;
   final String jamSelesai;
+  final String hari;
   final String guru;
+  final String kelas;
 
   Jadwal({
     required this.mataPelajaran,
     required this.jamMulai,
     required this.jamSelesai,
+    required this.hari,
     required this.guru,
+    required this.kelas,
   });
 
   factory Jadwal.fromJson(Map<String, dynamic> json) {
     return Jadwal(
-      mataPelajaran: json['jadwal_mata_pelajaran']['nama'] ?? 'N/A',
+      mataPelajaran: json['mata_pelajaran'] != null
+          ? json['mata_pelajaran']['nama']
+          : 'N/A',
       jamMulai: json['jam_mulai'] ?? 'N/A',
       jamSelesai: json['jam_selesai'] ?? 'N/A',
-      guru: json['guru']['name'] ?? 'N/A',
+      hari: json['hari'] ?? 'N/A',
+      guru: json['guru'] != null ? json['guru']['name'] : 'N/A',
+      kelas: json['kelas'] != null ? json['kelas']['nama'] : 'N/A',
     );
-  }
-}
-
-Future<List<Jadwal>> fetchJadwal() async {
-  final response = await http.get(
-    Uri.parse('http:/127.0.0.1:8000/jadwal'),
-    headers: {'Authorization': 'Bearer YOUR_ACCESS_TOKEN'},
-  );
-
-  if (response.statusCode == 200) {
-    final List<dynamic> data = json.decode(response.body);
-    return data.map((item) => Jadwal.fromJson(item)).toList();
-  } else {
-    throw Exception('Failed to load jadwal');
   }
 }

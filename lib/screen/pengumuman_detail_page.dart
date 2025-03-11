@@ -59,7 +59,6 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
     }
   }
 
-  // Optionally fetch more detailed data if needed
   Future<void> _fetchDetailedAnnouncement() async {
     setState(() {
       _isLoading = true;
@@ -103,8 +102,6 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
   }
 
   String _extractTextFromHtml(String htmlContent) {
-    // This function should match your implementation in the list view
-    // Simple implementation to remove HTML tags
     return htmlContent.replaceAll(RegExp(r'<[^>]*>'), '');
   }
 

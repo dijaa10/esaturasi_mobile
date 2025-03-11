@@ -515,7 +515,7 @@ class _LoginPageState extends State<LoginPage>
                                           controller: nisnController,
                                           keyboardType: TextInputType.number,
                                           decoration: InputDecoration(
-                                            labelText: 'NIS',
+                                            labelText: 'NISN',
                                             labelStyle: TextStyle(
                                               color: Color(0xFF1976D2),
                                               fontWeight: FontWeight.w500,

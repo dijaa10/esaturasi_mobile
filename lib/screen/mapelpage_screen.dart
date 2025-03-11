@@ -13,7 +13,7 @@ class _MapelPageState extends State<MapelPage> {
       'nama': 'Matematika',
       'kelas': 'X IPA',
       'waktu': '08:00 - 09:30',
-      'hari': 'Senin',
+      'hari': 'hari',
       'icon': Icons.calculate,
       'color': Colors.blue,
     },
@@ -426,7 +426,7 @@ class MapelActionSheet extends StatelessWidget {
           SizedBox(height: 20),
           ListTile(
             leading: Icon(Icons.edit, color: Colors.blue),
-            title: Text('Edit Mata Pelajaran'),
+            title: Text('Lihat Tugas'),
             onTap: () {
               Navigator.pop(context);
               // Tambahkan aksi edit
@@ -438,22 +438,6 @@ class MapelActionSheet extends StatelessWidget {
             onTap: () {
               Navigator.pop(context);
               // Tambahkan aksi lihat materi
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.people, color: Colors.orange),
-            title: Text('Daftar Siswa'),
-            onTap: () {
-              Navigator.pop(context);
-              // Tambahkan aksi lihat daftar siswa
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.delete, color: Colors.red),
-            title: Text('Hapus'),
-            onTap: () {
-              Navigator.pop(context);
-              // Tambahkan aksi hapus
             },
           ),
         ],
