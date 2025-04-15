@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../model/jadwal.dart';
+import 'dart:convert'; // Import untuk decode JSON
 
 class MapelPage extends StatefulWidget {
   @override
@@ -7,51 +11,69 @@ class MapelPage extends StatefulWidget {
 }
 
 class _MapelPageState extends State<MapelPage> {
-  // Data contoh mata pelajaran yang diampuh
-  final List<Map<String, dynamic>> mataPelajaran = [
-    {
-      'nama': 'Matematika',
-      'kelas': 'X IPA',
-      'waktu': '08:00 - 09:30',
-      'hari': 'hari',
-      'icon': Icons.calculate,
-      'color': Colors.blue,
-    },
-    {
-      'nama': 'Fisika',
-      'kelas': 'XII IPA',
-      'waktu': '13:00 - 14:30',
-      'hari': 'Rabu',
-      'icon': Icons.flash_on,
-      'color': Colors.purple,
-    },
-    {
-      'nama': 'Kimia',
-      'kelas': 'X IPA',
-      'waktu': '09:30 - 11:00',
-      'hari': 'Kamis',
-      'icon': Icons.science,
-      'color': Colors.green,
-    },
-    {
-      'nama': 'Biologi',
-      'kelas': 'XI IPA',
-      'waktu': '07:30 - 09:00',
-      'hari': 'Jumat',
-      'icon': Icons.biotech,
-      'color': Colors.orange,
-    },
-    {
-      'nama': 'Bahasa Inggris',
-      'kelas': 'XII IPS',
-      'waktu': '08:00 - 09:30',
-      'hari': 'Selasa',
-      'icon': Icons.language,
-      'color': Colors.indigo,
-    },
-  ];
+  // Data mata pelajaran yang diampuh
+  List<Jadwal> mataPelajaran = [];
+  bool _isLoading = true;
+  String _errorMessage = '';
+  final String baseUrl = "http://127.0.0.1:8000/";
 
-  String filterHari = 'Semua';
+  @override
+  void initState() {
+    super.initState();
+    _fetchJadwal();
+  }
+
+  Future<void> _fetchJadwal() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    try {
+      final response =
+          await http.get(Uri.parse("${baseUrl}api/jadwal/kelas/1"));
+
+      // Log the raw response for debugging
+      print("Raw response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+
+        // Log parsed data length
+        print("Parsed data length: ${data.length}");
+        if (data.isNotEmpty) {
+          print("First item sample: ${data[0]}");
+        }
+
+        setState(() {
+          mataPelajaran = data.map((item) => Jadwal.fromJson(item)).toList();
+          _isLoading = false;
+
+          // Debug log of parsed objects
+          print("Converted to ${mataPelajaran.length} Jadwal objects");
+          if (mataPelajaran.isNotEmpty) {
+            print(
+                "Sample jadwal: Mata Pelajaran=${mataPelajaran[0].mataPelajaran}, Hari=${mataPelajaran[0].hari}");
+          }
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = "Gagal mengambil data jadwal: ${response.statusCode}";
+        });
+        print(_errorMessage);
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "Error fetching jadwal: $e";
+      });
+      print(_errorMessage);
+    }
+  }
+
+  // Default to current day of week instead of 'Semua'
+  String filterHari = _getCurrentDayInIndonesian();
   final List<String> hariOptions = [
     'Semua',
     'Senin',
@@ -61,12 +83,45 @@ class _MapelPageState extends State<MapelPage> {
     'Jumat'
   ];
 
+  // Helper method to get current day name in Indonesian
+  static String _getCurrentDayInIndonesian() {
+    final days = [
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu'
+    ];
+    // Get current day (1 = Monday, 7 = Sunday)
+    final dayOfWeek = DateTime.now().weekday;
+    // If weekend, default to 'Semua' instead
+    if (dayOfWeek > 5) return 'Semua';
+    return days[dayOfWeek - 1];
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Filter mata pelajaran berdasarkan hari
-    List<Map<String, dynamic>> filteredMapel = filterHari == 'Semua'
+    // Debug filtering process
+    print("Current filter: $filterHari");
+    print("Total jadwal before filtering: ${mataPelajaran.length}");
+
+    // Filter mata pelajaran berdasarkan hari, ignoring case
+    List<Jadwal> filteredMapel = filterHari == 'Semua'
         ? mataPelajaran
-        : mataPelajaran.where((mapel) => mapel['hari'] == filterHari).toList();
+        : mataPelajaran
+            .where(
+                (mapel) => mapel.hari.toLowerCase() == filterHari.toLowerCase())
+            .toList();
+
+    print("Filtered jadwal count: ${filteredMapel.length}");
+
+    // Debug: Print all hari values to check for inconsistencies
+    if (mataPelajaran.isNotEmpty) {
+      print(
+          "All hari values in data: ${mataPelajaran.map((m) => m.hari).toSet().toList()}");
+    }
 
     return Scaffold(
       body: CustomScrollView(
@@ -150,298 +205,324 @@ class _MapelPageState extends State<MapelPage> {
             ),
           ),
 
-          // Jumlah mata pelajaran yang ditampilkan
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Menampilkan ${filteredMapel.length} mata pelajaran',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.sort,
+          // Content area
+          _isLoading
+              ? SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(
                       color: Color(0xFF1976D2),
                     ),
-                    onPressed: () {
-                      // Fungsi untuk mengurutkan mata pelajaran
-                    },
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          // Daftar mata pelajaran
-          SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            sliver: filteredMapel.isEmpty
-                ? SliverToBoxAdapter(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(height: 50),
-                          Icon(
-                            Icons.weekend,
-                            size: 80,
-                            color: Colors.grey.shade400,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'Tidak ada mata pelajaran untuk hari $filterHari',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey.shade600,
+                )
+              : _errorMessage.isNotEmpty
+                  ? SliverFillRemaining(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 80,
+                              color: Colors.red.shade300,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              _errorMessage,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey.shade600,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: _fetchJadwal,
+                              child: Text('Coba Lagi'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    Color(0xFF1976D2), // Corrected from primary
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : mataPelajaran.isEmpty
+                      ? SliverFillRemaining(
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.inbox,
+                                  size: 80,
+                                  color: Colors.grey.shade400,
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  'Tidak ada jadwal di database',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  )
-                : SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final mapel = filteredMapel[index];
-                        return AnimatedCard(
-                          mapel: mapel,
-                          index: index,
-                        );
-                      },
-                      childCount: filteredMapel.length,
-                    ),
-                  ),
-          ),
+                        )
+                      : filteredMapel.isEmpty
+                          ? SliverFillRemaining(
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.event_busy,
+                                      size: 80,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      'Tidak ada jadwal untuk hari ${filterHari.toLowerCase()}',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                    SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          filterHari = 'Semua';
+                                        });
+                                      },
+                                      child: Text('Lihat Semua Jadwal'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Color(
+                                            0xFF1976D2), // Corrected from primary
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : SliverPadding(
+                              padding: EdgeInsets.all(16),
+                              sliver: SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    final mapel = filteredMapel[index];
+                                    return AnimatedCard(
+                                      mapel: mapel,
+                                      index: index,
+                                    );
+                                  },
+                                  childCount: filteredMapel.length,
+                                ),
+                              ),
+                            ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Color(0xFF1976D2),
+        child: Icon(Icons.refresh),
+        onPressed: () {
+          _fetchJadwal();
+        },
       ),
     );
   }
 }
 
-class AnimatedCard extends StatefulWidget {
-  final Map<String, dynamic> mapel;
+class AnimatedCard extends StatelessWidget {
+  final Jadwal mapel;
   final int index;
 
-  AnimatedCard({required this.mapel, required this.index});
-
-  @override
-  _AnimatedCardState createState() => _AnimatedCardState();
-}
-
-class _AnimatedCardState extends State<AnimatedCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 300 + (widget.index * 100)),
-    );
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutQuint),
-    );
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  const AnimatedCard({
+    Key? key,
+    required this.mapel,
+    required this.index,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: FadeTransition(
-        opacity: _controller,
-        child: Card(
-          margin: EdgeInsets.only(bottom: 16),
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () {
-              // Aksi ketika kartu diklik
-            },
-            child: Container(
-              padding: EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Ikon mata pelajaran dengan latar belakang warna
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: widget.mapel['color'].withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      widget.mapel['icon'],
-                      size: 30,
-                      color: widget.mapel['color'],
-                    ),
+    final int hashCode = mapel.mataPelajaran.hashCode;
+    final color = Colors.primaries[hashCode % Colors.primaries.length];
+
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 500),
+      opacity: 1.0,
+      curve: Curves.easeInOut,
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _showDetailBottomSheet(context, mapel, color),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Ikon buku
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  SizedBox(width: 16),
-                  // Informasi mata pelajaran
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.mapel['nama'],
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                  child: Icon(Icons.book, color: color, size: 28),
+                ),
+                const SizedBox(width: 16),
+                // Informasi Mata Pelajaran
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        mapel.mataPelajaran, // Nama mata pelajaran
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Kelas: ${mapel.kelas}', // Nama kelas
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.person,
+                              size: 14, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text(
+                            "${mapel.guru}", // Nama guru
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontSize: 14,
+                            ),
                           ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Hari & Jam
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        mapel.hari, // Hari
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Kelas ${widget.mapel['kelas']}',
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 14,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              size: 14,
-                              color: Colors.grey.shade600,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              widget.mapel['hari'],
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 13,
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            Icon(
-                              Icons.access_time,
-                              size: 14,
-                              color: Colors.grey.shade600,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              widget.mapel['waktu'],
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  // Tombol menu
-                  IconButton(
-                    icon: Icon(Icons.more_vert, color: Colors.grey),
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(20),
-                          ),
-                        ),
-                        builder: (context) =>
-                            MapelActionSheet(mapel: widget.mapel),
-                      );
-                    },
-                  ),
-                ],
-              ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "${mapel.jamMulai} - ${mapel.jamSelesai}", // Jam mulai - Jam selesai
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
       ),
     );
   }
-}
 
-class MapelActionSheet extends StatelessWidget {
-  final Map<String, dynamic> mapel;
-
-  MapelActionSheet({required this.mapel});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
+  void _showDetailBottomSheet(BuildContext context, Jadwal mapel, Color color) {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: mapel['color'].withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  mapel['icon'],
-                  color: mapel['color'],
-                ),
-              ),
-              SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Text(
-                    mapel['nama'],
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.book,
+                      color: color,
                     ),
                   ),
-                  Text(
-                    'Kelas ${mapel['kelas']}',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                    ),
+                  SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        mapel.mataPelajaran,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      Text(
+                        "${mapel.kelas}",
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
+              SizedBox(height: 20),
+              ListTile(
+                leading: Icon(Icons.edit, color: Colors.blue),
+                title: Text('Lihat Tugas'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Tambahkan aksi edit
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.assignment, color: Colors.green),
+                title: Text('Lihat Materi'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Tambahkan aksi lihat materi
+                },
+              ),
             ],
           ),
-          SizedBox(height: 20),
-          ListTile(
-            leading: Icon(Icons.edit, color: Colors.blue),
-            title: Text('Lihat Tugas'),
-            onTap: () {
-              Navigator.pop(context);
-              // Tambahkan aksi edit
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.assignment, color: Colors.green),
-            title: Text('Lihat Materi'),
-            onTap: () {
-              Navigator.pop(context);
-              // Tambahkan aksi lihat materi
-            },
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
