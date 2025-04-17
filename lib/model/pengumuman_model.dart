@@ -18,9 +18,10 @@ class Pengumuman {
   factory Pengumuman.fromJson(Map<String, dynamic> json) {
     return Pengumuman(
       id: json['id'],
-      title: json['title'],
-      content: json['content'] ?? '',
-      date: json['date'] ?? json['created_at'] ?? DateTime.now().toString(),
+      title: json['judul_pengumuman'],
+      content: json['deskripsi_pengumuman'] ?? '',
+      date:
+          json['created_at'] ?? json['created_at'] ?? DateTime.now().toString(),
       author: json['author'] ?? json['posted_by'],
       attachmentUrl: json['attachment_url'] ?? json['lampiran'],
     );
