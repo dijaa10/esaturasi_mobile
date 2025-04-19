@@ -21,13 +21,12 @@ class Tugas {
     required this.status,
     required this.attachments,
     this.score,
-    this.imageUrl, // Inisialisasi imageUrl
-    this.fotoPath, // Menambahkan inisialisasi fotoPath
+    this.imageUrl,
+    this.fotoPath,
   });
 
   factory Tugas.fromJson(Map<String, dynamic> json) {
     // Ambil nama guru
-
     String guruValue = '';
     if (json.containsKey('guru') && json['guru'] is Map) {
       guruValue = json['guru']['nama']?.toString() ?? '';
@@ -36,6 +35,7 @@ class Tugas {
     } else {
       guruValue = 'Tidak ada nama';
     }
+
     // Inisialisasi list kosong untuk filePath
     List<dynamic> filePathList = [];
 
@@ -49,19 +49,23 @@ class Tugas {
       print('Error parsing file_path: $e');
     }
 
-    // Untuk Flutter Web di Chrome, gunakan localhost
+    // Base URL Laravel backend
     String baseUrl = 'http://127.0.0.1:8000';
 
-    // Menginisialisasi imageUrl dan fotoPath
+    // Inisialisasi imageUrl dan fotoPath
     String? imageUrl;
     String? fotoPath;
 
+    // Cek kalau filePathList ada isinya dan ambil nama file
     if (filePathList.isNotEmpty &&
         filePathList[0] is Map &&
         filePathList[0].containsKey('encrypted_name')) {
       fotoPath = filePathList[0]['encrypted_name'];
-      imageUrl = '$baseUrl/storage/$fotoPath';
+      imageUrl = '$baseUrl/storage/file_tugas/$fotoPath'; // Fix path di sini
     }
+
+    // Debug log URL-nya (opsional)
+    print('Image URL final: $imageUrl');
 
     return Tugas(
       id: json['id'],
@@ -72,8 +76,8 @@ class Tugas {
       status: json['status'] ?? 'Belum Dikerjakan',
       attachments: json['attachments'] ?? 0,
       score: json['score'],
-      imageUrl: imageUrl, // Menggunakan URL lengkap
-      fotoPath: fotoPath, // Menggunakan fotoPath yang valid atau null
+      imageUrl: imageUrl,
+      fotoPath: fotoPath,
     );
   }
 }
