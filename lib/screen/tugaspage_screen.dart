@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../model/tugas.dart';
 import 'dart:convert';
@@ -22,12 +23,48 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   String _className = "XI IPA 2";
   String _currentSemester = "Semester 2 - 2024/2025";
   String currentTab = 'Semua'; // Track the current selected tab
+  String nama = "";
+  String namaKelas = "Memuat...";
+  String fotoProfil = "";
+  final String baseUrl = "http://10.0.2.2:8000/";
 
   @override
   void initState() {
     super.initState();
+    _loadUserData();
     _tabController = TabController(length: 3, vsync: this);
     fetchTasks(); // Fetch tasks when the page loads
+  }
+
+  Future<void> _loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      nama = prefs.getString('nama') ?? "Nama Tidak Ditemukan";
+      String fotoPath = prefs.getString('foto_profil') ?? "";
+      fotoProfil = fotoPath.isNotEmpty
+          ? "${baseUrl}storage/$fotoPath"
+          : "https://via.placeholder.com/150";
+    });
+
+    String? idKelas = prefs.getString('kelas_id');
+    if (idKelas != null) _fetchKelas(idKelas);
+  }
+
+  Future<void> _fetchKelas(String idKelas) async {
+    try {
+      final response =
+          await http.get(Uri.parse("${baseUrl}api/get-kelas/$idKelas"));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          namaKelas = data['nama_kelas'] ?? "Kelas Tidak Ditemukan";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        namaKelas = "Gagal Memuat Kelas";
+      });
+    }
   }
 
   Future<void> fetchTasks() async {
@@ -216,14 +253,39 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                   Row(
                     children: [
                       CircleAvatar(
+                        radius: 30,
                         backgroundColor: Colors.white,
-                        radius: 20,
-                        child: Text(
-                          _studentName.split(' ').map((e) => e[0]).join(''),
-                          style: TextStyle(
-                            color: Color(0xFF1A237E),
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: ClipOval(
+                          child: fotoProfil.isNotEmpty
+                              ? Image.network(
+                                  fotoProfil,
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress
+                                                    .expectedTotalBytes !=
+                                                null
+                                            ? loadingProgress
+                                                    .cumulativeBytesLoaded /
+                                                loadingProgress
+                                                    .expectedTotalBytes!
+                                            : null,
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    print("ERROR loading image: $error");
+                                    return const Icon(Icons.person,
+                                        size: 40, color: Colors.grey);
+                                  },
+                                )
+                              : const Icon(Icons.person,
+                                  size: 60, color: Colors.grey),
                         ),
                       ),
                       SizedBox(width: 12),
@@ -231,7 +293,7 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _studentName,
+                            nama,
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -239,7 +301,7 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                             ),
                           ),
                           Text(
-                            _className,
+                            namaKelas,
                             style: TextStyle(
                               color: Colors.white70,
                               fontSize: 12,
@@ -344,7 +406,7 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                 Icon(Icons.assignment, color: subjectColor, size: 20),
                 SizedBox(width: 8),
                 Text(
-                  task.judul,
+                  '${task.mataPelajaran}',
                   style: TextStyle(
                       fontWeight: FontWeight.bold, color: subjectColor),
                 ),

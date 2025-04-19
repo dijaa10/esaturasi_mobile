@@ -314,7 +314,7 @@ class HomePageState extends State<HomePage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildActivityCard(Icons.assignment, '3',
+                      _buildActivityCard(Icons.assignment, '0',
                           'Tugas Tertunda', Colors.orange),
                       _buildActivityCard(
                           Icons.book, '4', 'Tugas Terlambat', Colors.green),
