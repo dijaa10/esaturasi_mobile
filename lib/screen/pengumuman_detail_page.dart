@@ -21,7 +21,7 @@ class PengumumanDetailPage extends StatefulWidget {
 class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
   bool _isLoading = false;
   late Pengumuman _announcement;
-  final String baseUrl = "http://127.0.0.1:8000/";
+  final String baseUrl = "http://10.0.2.2:8000/";
 
   @override
   void initState() {
@@ -101,8 +101,16 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
     await Share.share(content, subject: _announcement.title);
   }
 
-  String _extractTextFromHtml(String htmlContent) {
-    return htmlContent.replaceAll(RegExp(r'<[^>]*>'), '');
+  String _extractTextFromHtml(String htmlString) {
+    String result = htmlString.replaceAll(RegExp(r'<[^>]*>'), '');
+    result = result
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'");
+    return result;
   }
 
   @override
@@ -111,7 +119,12 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
       appBar: AppBar(
         title: const Text('Detail Pengumuman'),
         elevation: 0,
-        actions: [],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: _shareAnnouncement,
+          )
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -168,15 +181,15 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
                     ),
                   ),
 
-                  // Main content
+                  // Main content (Html content goes here)
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Html(
-                      data: _announcement.content,
+                      data: _extractTextFromHtml(_announcement.content),
                       style: {
                         "body": Style(
-                          fontSize: FontSize(15),
-                          lineHeight: LineHeight(1.5),
+                          fontSize: FontSize(15), // Ukuran font
+                          lineHeight: LineHeight(1.5), // Jarak antar baris
                         ),
                         "a": Style(
                           color: const Color(0xFF1976D2),
@@ -185,10 +198,9 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
                       },
                       onLinkTap: (url, attributes, element) {
                         if (url != null) {
-                          // Handle the URL opening - you might want to use url_launcher package
                           print("Link clicked: $url");
-                          // Add url_launcher implementation here
-                          // launchUrl(Uri.parse(url));
+                          // Gunakan url_launcher untuk membuka URL
+                          launchUrl(Uri.parse(url));
                         }
                       },
                     ),

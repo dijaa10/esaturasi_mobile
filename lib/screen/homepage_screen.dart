@@ -24,7 +24,8 @@ class HomePageState extends State<HomePage> {
   String nama = "";
   String namaKelas = "Memuat...";
   String fotoProfil = "";
-  final String baseUrl = "http://127.0.0.1:8000/";
+  final String baseUrl = "http://10.0.2.2:8000/";
+
   String currentDate = "";
   String greeting = "";
   bool isImageLoading = true;
@@ -46,23 +47,14 @@ class HomePageState extends State<HomePage> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       nama = prefs.getString('nama') ?? "Nama Tidak Ditemukan";
+      String fotoPath = prefs.getString('foto_profil') ?? "";
+      fotoProfil = fotoPath.isNotEmpty
+          ? "${baseUrl}storage/$fotoPath"
+          : "https://via.placeholder.com/150";
     });
 
     String? idKelas = prefs.getString('kelas_id');
     if (idKelas != null) _fetchKelas(idKelas);
-
-    String fotoPath = prefs.getString('foto_profil') ?? "";
-    if (fotoPath.isNotEmpty) {
-      fotoProfil = "${baseUrl}/storage/$fotoPath";
-      print("DEBUG - Profile image URL: $fotoProfil");
-    } else {
-      fotoProfil = "";
-    }
-
-    setState(() {
-      isImageLoading = fotoProfil.isNotEmpty;
-      hasImageError = false;
-    });
   }
 
   Future<void> _fetchKelas(String idKelas) async {
@@ -274,7 +266,7 @@ class HomePageState extends State<HomePage> {
                                   },
                                 )
                               : const Icon(Icons.person,
-                                  size: 40, color: Colors.grey),
+                                  size: 60, color: Colors.grey),
                         ),
                       ),
                       const SizedBox(width: 15),

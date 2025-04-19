@@ -13,7 +13,7 @@ class PengumumanScreen extends StatefulWidget {
 class _PengumumanScreenState extends State<PengumumanScreen> {
   List<Pengumuman> _announcements = [];
   bool _isLoading = true;
-  final String baseUrl = 'http://127.0.0.1:8000/';
+  final String baseUrl = "http://10.0.2.2:8000/";
 
   @override
   void initState() {

@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import '../login.dart';
+import '../loginpage_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -17,7 +17,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String namaKelas = "Memuat...";
   String namaJurusan = "Memuat...";
   String fotoProfil = "";
-  final String baseUrl = "http://127.0.0.1:8000/";
+  final String baseUrl = "http://10.0.2.2:8000/";
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -41,7 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     // Ambil nama kelas dan jurusan berdasarkan ID
     String? idKelas = prefs.getString('kelas_id');
-    String? idJurusan = prefs.getString('jurusan_id');
+    String? idJurusan = prefs.getString('kelas_id');
 
     if (idKelas != null) _fetchKelas(idKelas);
     if (idJurusan != null) _fetchJurusan(idJurusan);
@@ -65,15 +65,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // untuk mengambil nama jurusan dari API
-  Future<void> _fetchJurusan(String idJurusan) async {
+  Future<void> _fetchJurusan(String idKelas) async {
     try {
-      final response =
-          await http.get(Uri.parse("${baseUrl}api/get-jurusan/$idJurusan"));
+      final response = await http.get(
+        Uri.parse("${baseUrl}api/get-jurusan-by-kelas/$idKelas"),
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
           namaJurusan = data['nama_jurusan'] ?? "Jurusan Tidak Ditemukan";
+        });
+      } else {
+        setState(() {
+          namaJurusan = "Jurusan Tidak Ditemukan";
         });
       }
     } catch (e) {
@@ -133,7 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => Login()),
+      MaterialPageRoute(builder: (context) => LoginPage()),
     );
   }
 

@@ -32,7 +32,7 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
 
   Future<void> fetchTasks() async {
     final response =
-        await http.get(Uri.parse('http://127.0.0.1:8000/api/tugas'));
+        await http.get(Uri.parse('http://10.0.2.2:8000/api/tugas'));
 
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);
