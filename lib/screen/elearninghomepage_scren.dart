@@ -40,7 +40,7 @@ class _ELearningHomePageState extends State<ELearningHomePage> {
         items: const [
           BottomNavigationBarItem(
               icon: Icon(Icons.dashboard), label: 'Beranda'),
-          BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Mapel'),
+          BottomNavigationBarItem(icon: Icon(Icons.book), label: 'Jadwal'),
           BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Tugas'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],

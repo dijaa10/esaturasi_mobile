@@ -30,8 +30,21 @@ class _MapelPageState extends State<MapelPage> {
     });
 
     try {
+      // Ambil kelas_id dari SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String kelasId = prefs.getString('kelas_id') ??
+          ''; // Ambil kelas_id yang sudah disimpan
+
+      if (kelasId.isEmpty) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = "ID Kelas tidak ditemukan";
+        });
+        return;
+      }
+
       final response =
-          await http.get(Uri.parse("${baseUrl}api/jadwal/kelas/1"));
+          await http.get(Uri.parse("${baseUrl}api/jadwal/kelas/$kelasId"));
 
       // Log the raw response for debugging
       print("Raw response: ${response.body}");
@@ -260,7 +273,7 @@ class _MapelPageState extends State<MapelPage> {
                                 ),
                                 SizedBox(height: 16),
                                 Text(
-                                  'Tidak ada jadwal di database',
+                                  'Tidak ada jadwal',
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: Colors.grey.shade600,
@@ -383,7 +396,7 @@ class AnimatedCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        mapel.mataPelajaran, // Nama mata pelajaran
+                        '${mapel.mataPelajaran}', // Nama mata pelajaran
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -486,14 +499,14 @@ class AnimatedCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        mapel.mataPelajaran,
+                        "${mapel.mataPelajaran}",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
                         ),
                       ),
                       Text(
-                        "${mapel.kelas}",
+                        "${mapel.guru}",
                         style: TextStyle(
                           color: Colors.grey.shade600,
                         ),

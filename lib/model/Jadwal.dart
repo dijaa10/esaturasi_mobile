@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 class Jadwal {
@@ -20,33 +21,29 @@ class Jadwal {
   });
 
   factory Jadwal.fromJson(Map<String, dynamic> json) {
-    // Debug print untuk melihat data yang masuk dari API
     if (kDebugMode) {
       print("Raw JSON data: $json");
     }
 
-    // Ambil nama mata pelajaran dari relasi atau ID
+    // Ambil nama mapel
     String mataPelajaranValue = '';
     if (json.containsKey('mata_pelajaran') && json['mata_pelajaran'] is Map) {
-      mataPelajaranValue = json['mata_pelajaran']['nama']?.toString() ?? '';
+      mataPelajaranValue =
+          json['mata_pelajaran']['nama_mapel']?.toString() ?? '';
     } else if (json.containsKey('nama_mapel')) {
       mataPelajaranValue = json['nama_mapel']?.toString() ?? '';
-    } else if (json.containsKey('mata_pelajaran_id')) {
-      mataPelajaranValue = 'ID Mapel: ${json['mata_pelajaran_id']}';
     } else {
-      mataPelajaranValue = 'Tidak ada nama';
+      mataPelajaranValue = 'Tidak ada mapel';
     }
 
-    // Ambil nama kelas dari relasi atau ID
+    // Ambil nama kelas
     String kelasValue = '';
     if (json.containsKey('kelas') && json['kelas'] is Map) {
-      kelasValue = json['kelas']['nama']?.toString() ?? '';
+      kelasValue = json['kelas']['nama_kelas']?.toString() ?? '';
     } else if (json.containsKey('nama_kelas')) {
       kelasValue = json['nama_kelas']?.toString() ?? '';
-    } else if (json.containsKey('kelas_id')) {
-      kelasValue = 'Kelas: ${json['kelas_id']}';
     } else {
-      kelasValue = 'Tidak ada nama';
+      kelasValue = 'Tidak ada kelas';
     }
 
     // Ambil nama guru
@@ -56,81 +53,56 @@ class Jadwal {
     } else if (json.containsKey('nama_guru')) {
       guruValue = json['nama_guru']?.toString() ?? '';
     } else {
-      guruValue = 'Tidak ada nama';
+      guruValue = 'Tidak ada guru';
     }
 
-    // Menangani berbagai kemungkinan nama field untuk hari
-    String dayValue = json['hari']?.toString() ??
-        json['day']?.toString() ??
-        json['nama_hari']?.toString() ??
-        'Tidak diketahui'; // Default jika tidak ditemukan
+    // Ambil hari
+    String hariValue = '';
+    try {
+      // Pastikan "hari" adalah string yang valid, lalu decode JSON
+      if (json['hari'] is String) {
+        List<dynamic> hariList = jsonDecode(json['hari']);
+        // Pastikan hariList tidak kosong
+        if (hariList.isNotEmpty && hariList[0] is String) {
+          hariValue = hariList[0].toString();
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error parsing hari: $e");
+      }
+      hariValue = 'Format tidak valid';
+    }
 
-    // Normalisasi nama hari jika diperlukan
-    dayValue = _normalizeDayName(dayValue);
+    // Ambil jam mulai dan jam selesai
+    String jamMulaiValue = '';
+    String jamSelesaiValue = '';
+    try {
+      // Decode string JSON untuk jam mulai dan jam selesai
+      if (json['jam_mulai'] is String && json['jam_selesai'] is String) {
+        Map<String, dynamic> jamMulaiMap = jsonDecode(json['jam_mulai']);
+        Map<String, dynamic> jamSelesaiMap = jsonDecode(json['jam_selesai']);
 
-    // Debug print hasil parsing
-    if (kDebugMode) {
-      print("Nama Mata Pelajaran: $mataPelajaranValue");
-      print("Nama Kelas: $kelasValue");
-      print("Nama Guru: $guruValue");
+        // Ambil data jam berdasarkan hari yang sudah didapatkan
+        if (hariValue.isNotEmpty) {
+          jamMulaiValue = jamMulaiMap[hariValue] ?? '';
+          jamSelesaiValue = jamSelesaiMap[hariValue] ?? '';
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error parsing waktu: $e");
+      }
     }
 
     return Jadwal(
-      id: json['id'] is int
-          ? json['id']
-          : int.tryParse(json['id'].toString()) ?? 0,
+      id: json['id'],
       mataPelajaran: mataPelajaranValue,
-      hari: dayValue,
+      hari: hariValue, // Hanya nama hari saja
       kelas: kelasValue,
-      jamMulai: json['jam_mulai']?.toString() ?? '00:00',
-      jamSelesai: json['jam_selesai']?.toString() ?? '00:00',
+      jamMulai: jamMulaiValue,
+      jamSelesai: jamSelesaiValue,
       guru: guruValue,
     );
-  }
-
-  static String _normalizeDayName(String day) {
-    day = day.trim().toLowerCase();
-    final Map<String, String> dayMap = {
-      'sen': 'Senin',
-      'senin': 'Senin',
-      'monday': 'Senin',
-      'sel': 'Selasa',
-      'selasa': 'Selasa',
-      'tuesday': 'Selasa',
-      'rab': 'Rabu',
-      'rabu': 'Rabu',
-      'wednesday': 'Rabu',
-      'kam': 'Kamis',
-      'kamis': 'Kamis',
-      'thursday': 'Kamis',
-      'jum': 'Jumat',
-      'jumat': 'Jumat',
-      'jum\'at': 'Jumat',
-      'friday': 'Jumat',
-    };
-    return dayMap[day] ?? day.substring(0, 1).toUpperCase() + day.substring(1);
-  }
-
-  // Override toString untuk debugging
-  @override
-  String toString() {
-    return 'guru: $guru, jamSelesai: $jamSelesai, jamMulai: $jamMulai, kelas: $kelas, hari: $hari, mataPelajaran: $mataPelajaran';
-  }
-
-  // Alternatif tampilan string terurut
-  String toOrderedString() {
-    return '$guru $jamSelesai $jamMulai $kelas $hari $mataPelajaran';
-  }
-
-  // Format ke dalam Map yang terurut
-  Map<String, String> toOrderedMap() {
-    return {
-      'guru': guru,
-      'jamSelesai': jamSelesai,
-      'jamMulai': jamMulai,
-      'kelas': kelas,
-      'hari': hari,
-      'mataPelajaran': mataPelajaran,
-    };
   }
 }
