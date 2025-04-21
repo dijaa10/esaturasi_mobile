@@ -21,8 +21,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final ImagePicker _picker = ImagePicker();
 
   // Premium UI colors
-  final Color primaryColor = Color(0xFF0A2463); // Deep Blue
-  final Color accentColor = Color(0xFF3E92CC); // Light Blue
+  final Color primaryColor = Color(0xFF1976D2); // Deep Blue
+  final Color accentColor = Color(0xFF64B5F6); // Light Blue
   final Color bgColor = Color(0xFFF8F9FA); // Light Gray background
   final Color cardColor = Colors.white;
   final Color textColor = Color(0xFF2D3142); // Dark text

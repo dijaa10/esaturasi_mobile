@@ -94,13 +94,6 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
     }
   }
 
-  Future<void> _shareAnnouncement() async {
-    final String content =
-        "Pengumuman: ${_announcement.title}\n\n${_extractTextFromHtml(_announcement.content)}\n\nTanggal: ${_formatDate(_announcement.date)}";
-
-    await Share.share(content, subject: _announcement.title);
-  }
-
   String _extractTextFromHtml(String htmlString) {
     String result = htmlString.replaceAll(RegExp(r'<[^>]*>'), '');
     result = result
@@ -119,12 +112,7 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
       appBar: AppBar(
         title: const Text('Detail Pengumuman'),
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: _shareAnnouncement,
-          )
-        ],
+        actions: [],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -185,17 +173,7 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Html(
-                      data: _extractTextFromHtml(_announcement.content),
-                      style: {
-                        "body": Style(
-                          fontSize: FontSize(15), // Ukuran font
-                          lineHeight: LineHeight(1.5), // Jarak antar baris
-                        ),
-                        "a": Style(
-                          color: const Color(0xFF1976D2),
-                          textDecoration: TextDecoration.none,
-                        ),
-                      },
+                      data: _announcement.content,
                       onLinkTap: (url, attributes, element) {
                         if (url != null) {
                           print("Link clicked: $url");
@@ -205,27 +183,6 @@ class _PengumumanDetailPageState extends State<PengumumanDetailPage> {
                       },
                     ),
                   ),
-
-                  // Additional info or metadata if available
-                  if (_announcement.author != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.person,
-                              color: Color(0xFF757575), size: 18),
-                          const SizedBox(width: 8),
-                          Text(
-                            "Ditulis oleh: ${_announcement.author}",
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
 
                   const SizedBox(height: 24),
                 ],

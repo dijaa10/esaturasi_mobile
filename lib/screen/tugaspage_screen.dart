@@ -88,7 +88,9 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   void _filterTasks() {
     setState(() {
       filteredTasks = tasks.where((task) {
-        return task.judul.toLowerCase().contains(_searchQuery.toLowerCase());
+        return '${task.mataPelajaran}'
+            .toLowerCase()
+            .contains(_searchQuery.toLowerCase());
       }).toList();
 
       // Filter tasks based on the selected tab
@@ -203,7 +205,7 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
         controller: _searchController,
         style: TextStyle(color: Colors.white),
         decoration: InputDecoration(
-          hintText: 'Cari tugas...',
+          hintText: 'Cari Tugas Sesuai Mapel',
           hintStyle: TextStyle(color: Colors.white70),
           border: InputBorder.none,
         ),
@@ -220,10 +222,10 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
           icon: Icon(Icons.clear),
           onPressed: () {
             setState(() {
-              _searchController.clear();
+              _isSearching = false;
               _searchQuery = '';
+              _searchController.clear();
             });
-            _filterTasks();
           },
         ),
       ],

@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart'; // Import intl untuk format tanggal
-import 'package:intl/date_symbol_data_local.dart'; // Import untuk localization
-import 'package:cached_network_image/cached_network_image.dart'; // Package untuk mengelola cache gambar
-import 'package:http/http.dart' as http; // Import http untuk request API
-import 'dart:convert'; // Import untuk decode JSON
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:math';
+import 'package:timeago/timeago.dart' as timeago;
 import 'package:esaturasi/screen/calendar_screen.dart';
 import 'package:esaturasi/screen/mapel_screen.dart';
 import '../login.dart';
 import '../model/pengumuman_model.dart';
 import 'pengumuman_detail_page.dart';
 import 'pengumuman_screen.dart';
-import 'package:timeago/timeago.dart' as timeago;
+import '../model/jadwal.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -30,13 +32,41 @@ class HomePageState extends State<HomePage> {
   String greeting = "";
   bool isImageLoading = true;
   bool hasImageError = false;
+  List<Jadwal> semuaJadwal = [];
+  List<Map<String, dynamic>> _courses = [];
+
+  final List<IconData> randomIcons = [
+    Icons.computer,
+    Icons.storage,
+    Icons.phone_android,
+    Icons.brush,
+    Icons.book,
+    Icons.code,
+    Icons.calculate,
+    Icons.science,
+  ];
+
+  final List<IconData> icons = [
+    Icons.computer,
+    Icons.storage,
+    Icons.phone_android,
+    Icons.brush,
+    Icons.book,
+    Icons.school,
+  ];
 
   @override
   void initState() {
     super.initState();
     _fetchAnnouncements();
     _loadUserData();
-    _setGreeting(); // Memanggil method untuk menentukan greeting berdasarkan waktu
+    _setGreeting();
+
+    // Inisialisasi data lokal Indonesia
+    initializeDateFormatting('id_ID', null).then((_) {
+      // Setelah inisialisasi, ambil data jadwal
+      _fetchJadwal();
+    });
   }
 
   String timeAgo(DateTime date) {
@@ -74,7 +104,6 @@ class HomePageState extends State<HomePage> {
     }
   }
 
-  /// 🔹 Fungsi untuk menentukan greeting berdasarkan waktu
   void _setGreeting() {
     final now = DateTime.now();
     final hour = now.hour;
@@ -88,36 +117,103 @@ class HomePageState extends State<HomePage> {
     }
   }
 
-  final List<Map<String, dynamic>> _courses = [
-    {
-      'title': 'Pemrograman Web',
-      'teacher': 'Pak Andi Wijaya',
-      'progress': 0.75,
-      'color': Colors.blue,
-      'icon': Icons.computer,
-    },
-    {
-      'title': 'Basis Data',
-      'teacher': 'Ibu Siti Aminah',
-      'progress': 0.6,
-      'color': Colors.orange,
-      'icon': Icons.storage,
-    },
-    {
-      'title': 'Pemrograman Mobile',
-      'teacher': 'Pak Dedi Kurniawan',
-      'progress': 0.85,
-      'color': Colors.green,
-      'icon': Icons.phone_android,
-    },
-    {
-      'title': 'Desain Grafis',
-      'teacher': 'Ibu Ratna Dewi',
-      'progress': 0.45,
-      'color': Colors.purple,
-      'icon': Icons.brush,
-    },
-  ];
+  String getHariIni() {
+    final hari = DateTime.now().weekday;
+    const namaHari = [
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu'
+    ];
+    return namaHari[hari - 1];
+  }
+
+  Future<void> _fetchJadwal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final kelasId = prefs.getString('kelas_id');
+
+    if (kelasId == null) {
+      print("ID Kelas tidak ditemukan");
+      return;
+    }
+
+    try {
+      final response =
+          await http.get(Uri.parse("${baseUrl}api/jadwal/kelas/$kelasId"));
+
+      print("Status API Jadwal: ${response.statusCode}");
+      print("Response API: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<Jadwal> jadwalList = (data['data'] as List)
+            .map((item) => Jadwal.fromJson(item))
+            .toList();
+
+        print("Jumlah jadwal diterima: ${jadwalList.length}");
+
+        setState(() {
+          semuaJadwal = jadwalList;
+          _courses = getCoursesToday(jadwalList);
+        });
+      } else {
+        print("Gagal mengambil jadwal: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error saat mengambil jadwal: $e");
+    }
+  }
+
+  List<Map<String, dynamic>> getCoursesToday(List<Jadwal> jadwals) {
+    if (jadwals.isEmpty) {
+      print("Tidak ada jadwal yang tersedia sama sekali");
+      return [];
+    }
+
+    // Dapatkan nama hari dalam bahasa Indonesia dari Intl
+    final todayIntl = DateFormat.EEEE('id_ID').format(DateTime.now());
+    print("Hari ini (Intl): $todayIntl");
+
+    // Dapatkan nama hari dengan cara manual - sebagai alternatif
+    final todayManual = getHariIni();
+    print("Hari ini (Manual): $todayManual");
+
+    // Debug: Tampilkan semua jadwal yang ada
+    print("Semua jadwal yang tersedia:");
+    jadwals.forEach((j) {
+      print("- ${j.hari}: ${j.mataPelajaran} (${j.guru})");
+    });
+
+    // Coba cari dengan beberapa cara berbeda
+    final filtered = jadwals
+        .where((j) =>
+            j.hari.toLowerCase() == todayIntl.toLowerCase() ||
+            j.hari.toLowerCase() == todayManual.toLowerCase())
+        .toList();
+
+    print("Jumlah jadwal hari ini: ${filtered.length}");
+
+    if (filtered.isEmpty) {
+      print("Tidak ada jadwal untuk hari: $todayIntl/$todayManual");
+
+      // Cek apakah mungkin ada masalah dengan format hari
+      print("Format hari di database vs aplikasi:");
+      final uniqueDays = jadwals.map((j) => j.hari).toSet().toList();
+      print("Hari di database: $uniqueDays");
+    }
+
+    return filtered.map((j) {
+      return {
+        'title': j.mataPelajaran,
+        'teacher': j.guru,
+        'color': Colors.primaries[Random().nextInt(Colors.primaries.length)],
+        'icon': icons[Random().nextInt(icons.length)],
+      };
+    }).toList();
+  }
 
   final List<Map<String, dynamic>> _assignments = [
     {
@@ -166,6 +262,53 @@ class HomePageState extends State<HomePage> {
     if (hour < 15) return 'Selamat Siang,';
     if (hour < 18) return 'Selamat Sore,';
     return 'Selamat Malam,';
+  }
+
+// Fungsi untuk membangun card jadwal pelajaran
+  Widget buildCourseCard(Map<String, dynamic> course) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 15.0),
+      child: Container(
+        width: 200,
+        decoration: BoxDecoration(
+          color: course['color'].withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                course['icon'],
+                color: course['color'],
+                size: 35,
+              ),
+              const SizedBox(height: 15),
+              Text(
+                course['title'],
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 5),
+              Text(
+                course['teacher'],
+                style: TextStyle(
+                  color: Colors.black.withOpacity(0.7),
+                  fontSize: 14,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -326,7 +469,6 @@ class HomePageState extends State<HomePage> {
               ),
             ),
 
-            // My Courses Section
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -343,7 +485,9 @@ class HomePageState extends State<HomePage> {
                         ),
                       ),
                       TextButton.icon(
-                        onPressed: () {},
+                        onPressed: () {
+                          // Navigasi ke halaman semua jadwal
+                        },
                         icon: const Icon(Icons.arrow_forward),
                         label: const Text('Lihat Semua'),
                         style: TextButton.styleFrom(
@@ -353,19 +497,28 @@ class HomePageState extends State<HomePage> {
                     ],
                   ),
                   const SizedBox(height: 15),
-                  SizedBox(
-                    height: 160,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _courses.length,
-                      itemBuilder: (context, index) {
-                        return _buildCourseCard(_courses[index]);
-                      },
-                    ),
-                  ),
-
+                  _courses.isNotEmpty
+                      ? SizedBox(
+                          height: 160,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _courses.length,
+                            itemBuilder: (context, index) {
+                              return buildCourseCard(_courses[index]);
+                            },
+                          ),
+                        )
+                      : const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(20),
+                            child: Text(
+                              'Tidak ada jadwal hari ini.',
+                              style:
+                                  TextStyle(fontSize: 16, color: Colors.grey),
+                            ),
+                          ),
+                        ),
                   const SizedBox(height: 30),
-
                   // Assignments Section
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -493,69 +646,6 @@ class HomePageState extends State<HomePage> {
             textAlign: TextAlign.center,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCourseCard(Map<String, dynamic> course) {
-    return Container(
-      margin: const EdgeInsets.only(right: 15),
-      width: 200,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(15),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: course['color'].withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    course['icon'],
-                    color: course['color'],
-                    size: 24,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 15),
-            Text(
-              course['title'],
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 5),
-            Text(
-              course['teacher'],
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
       ),
     );
   }
