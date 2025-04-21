@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'homepage_screen.dart';
-import 'mapelpage_screen.dart';
+import 'jadwalPageScreen.dart';
 import 'tugaspage_screen.dart';
-import 'profile_screen.dart';
+import 'profilePageScreen.dart';
 
 class ELearningHomePage extends StatefulWidget {
   @override
