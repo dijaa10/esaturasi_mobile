@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
+import '../utils/attachment_dialog.dart'; // import modul lampiran
 import '../model/tugas.dart';
 
 class DetailTugasPage extends StatefulWidget {
@@ -24,18 +25,28 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
 
   Future<Uint8List?> _fetchImage(String? url) async {
     if (url == null || url.isEmpty) {
-      return null; // Return null instead of throwing exception
+      return null;
     }
-
     try {
-      final response = await http.get(Uri.parse(url));
+      // Menambahkan timeout
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(Duration(seconds: 10)); // Timeout setelah 10 detik
+
+      // Mengecek jika status code 200 OK
       if (response.statusCode == 200) {
         return response.bodyBytes;
+      } else if (response.statusCode == 404) {
+        print('Gambar tidak ditemukan (404)');
+        return null;
+      } else {
+        print('Error loading image: ${response.statusCode}');
+        return null;
       }
     } catch (e) {
       print('Error loading image: $e');
+      return null;
     }
-    return null;
   }
 
   @override
@@ -47,10 +58,8 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // Custom app bar with image background
           SliverAppBar(
             expandedHeight: 220.0,
-            floating: false,
             pinned: true,
             backgroundColor: subjectColor,
             flexibleSpace: FlexibleSpaceBar(
@@ -75,11 +84,7 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                     return Stack(
                       fit: StackFit.expand,
                       children: [
-                        Image.memory(
-                          snapshot.data!,
-                          fit: BoxFit.cover,
-                        ),
-                        // Gradient overlay for better text visibility
+                        Image.memory(snapshot.data!, fit: BoxFit.cover),
                         Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -87,7 +92,7 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                               end: Alignment.bottomCenter,
                               colors: [
                                 Colors.transparent,
-                                Colors.black.withOpacity(0.7),
+                                Colors.black.withOpacity(0.7)
                               ],
                             ),
                           ),
@@ -112,77 +117,23 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
             actions: [
               IconButton(
                 icon: Icon(Icons.edit, color: Colors.white),
-                onPressed: () {
-                  // Aksi untuk edit tugas
-                },
+                onPressed: () {},
               ),
             ],
           ),
-
-          // Content
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Status badge
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color:
-                          _getStatusColor(widget.task.status).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: _getStatusColor(widget.task.status),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _getStatusIcon(widget.task.status),
-                          size: 16,
-                          color: _getStatusColor(widget.task.status),
-                        ),
-                        SizedBox(width: 4),
-                        Text(
-                          widget.task.status,
-                          style: TextStyle(
-                            color: _getStatusColor(widget.task.status),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
+                  _buildStatusBadge(widget.task.status),
                   SizedBox(height: 20),
-
-                  // Deskripsi Tugas with section header
-                  Text(
-                    "DESKRIPSI",
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
-                      letterSpacing: 1.2,
-                    ),
-                  ),
+                  _buildSectionHeader("DESKRIPSI"),
                   SizedBox(height: 8),
-                  Text(
-                    widget.task.deskripsi,
-                    style: TextStyle(
-                      fontSize: 16,
-                      height: 1.5,
-                      color: Colors.black87,
-                    ),
-                  ),
-
+                  Text(widget.task.deskripsi,
+                      style: TextStyle(fontSize: 16, height: 1.5)),
                   SizedBox(height: 24),
-
-                  // Info Card
                   Container(
                     padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -191,120 +142,35 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                     ),
                     child: Column(
                       children: [
-                        // Teacher info
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: subjectColor.withOpacity(0.2),
-                              child: Icon(
-                                Icons.person,
-                                color: subjectColor,
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Guru",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                  Text(
-                                    widget.task.guru,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-
+                        _buildInfoRow(Icons.person, "Guru", widget.task.guru,
+                            subjectColor),
                         Divider(height: 24),
-
-                        // Deadline info
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: subjectColor.withOpacity(0.2),
-                              child: Icon(
-                                Icons.calendar_today,
-                                color: subjectColor,
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Tenggat",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                  Text(
-                                    _formatDeadline(widget.task.deadline),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: _getDeadlineColor(
-                                          widget.task.deadline),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-
+                        _buildInfoRow(Icons.calendar_today, "Tenggat",
+                            _formatDeadline(widget.task.deadline), subjectColor,
+                            valueColor:
+                                _getDeadlineColor(widget.task.deadline)),
                         Divider(height: 24),
-
-                        // Attachments info
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              backgroundColor: subjectColor.withOpacity(0.2),
-                              child: Icon(
-                                Icons.attach_file,
-                                color: subjectColor,
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Lampiran",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                  Text(
-                                    "${widget.task.attachments} file",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        GestureDetector(
+                          onTap: () {
+                            if (widget.task.imageUrl != null &&
+                                widget.task.imageUrl!.isNotEmpty) {
+                              showAttachmentDialog(
+                                  context, widget.task.imageUrl!);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content:
+                                        Text('Tidak ada lampiran tersedia')),
+                              );
+                            }
+                          },
+                          child: _buildInfoRow(Icons.attach_file, "Lampiran",
+                              "${widget.task.attachments} file", subjectColor),
                         ),
                       ],
                     ),
                   ),
-
                   SizedBox(height: 32),
-
-                  // Button untuk mengerjakan tugas
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -317,9 +183,8 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                             content: Text("Fitur ini akan datang segera."),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: Text('Tutup'),
-                              ),
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text('Tutup')),
                             ],
                           ),
                         );
@@ -329,19 +194,13 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                         foregroundColor: Colors.white,
                         elevation: 2,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                            borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: Text(
-                        'Mengerjakan Tugas',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: Text('Mengerjakan Tugas',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
-
                   SizedBox(height: 20),
                 ],
               ),
@@ -352,7 +211,65 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     );
   }
 
-  // Fungsi untuk menentukan warna berdasarkan mata pelajaran
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey[600],
+          letterSpacing: 1.2),
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: _getStatusColor(status).withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _getStatusColor(status), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_getStatusIcon(status),
+              size: 16, color: _getStatusColor(status)),
+          SizedBox(width: 4),
+          Text(status,
+              style: TextStyle(
+                  color: _getStatusColor(status), fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value, Color color,
+      {Color? valueColor}) {
+    return Row(
+      children: [
+        CircleAvatar(
+          backgroundColor: color.withOpacity(0.2),
+          child: Icon(icon, color: color),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              Text(value,
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: valueColor ?? Colors.black87)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Color _getSubjectColor(String subjectName) {
     switch (subjectName.toLowerCase()) {
       case 'matematika':
@@ -372,7 +289,6 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     }
   }
 
-  // Menentukan ikon berdasarkan mata pelajaran
   IconData _getSubjectIcon(String subjectName) {
     switch (subjectName.toLowerCase()) {
       case 'matematika':
@@ -392,7 +308,6 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     }
   }
 
-  // Fungsi untuk menentukan warna status tugas
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'sudah dikumpulkan':
@@ -406,7 +321,6 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     }
   }
 
-  // Menentukan ikon status tugas
   IconData _getStatusIcon(String status) {
     switch (status.toLowerCase()) {
       case 'sudah dikumpulkan':
@@ -420,13 +334,11 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     }
   }
 
-  // Format tenggat waktu tugas
   String _formatDeadline(String deadlineStr) {
     try {
       DateTime deadline = DateTime.parse(deadlineStr);
       DateTime now = DateTime.now();
       Duration difference = deadline.difference(now);
-
       if (difference.isNegative) {
         return 'Tenggat terlewat!';
       } else if (difference.inDays == 0) {
@@ -443,13 +355,11 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     }
   }
 
-  // Menentukan warna untuk deadline (merah jika mendekati)
   Color _getDeadlineColor(String deadlineStr) {
     try {
       DateTime deadline = DateTime.parse(deadlineStr);
       DateTime now = DateTime.now();
       Duration difference = deadline.difference(now);
-
       if (difference.isNegative) {
         return Colors.red;
       } else if (difference.inDays < 2) {
@@ -462,7 +372,6 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     }
   }
 
-  // Fungsi untuk menentukan apakah warna gelap atau terang
   bool _isDarkColor(Color color) {
     double luminance =
         0.299 * color.red + 0.587 * color.green + 0.114 * color.blue;

@@ -9,7 +9,6 @@ class Tugas {
   final String status;
   final int attachments;
   final int? score;
-  final String? imageUrl;
   final String? fotoPath;
   final String? mataPelajaran;
 
@@ -22,52 +21,47 @@ class Tugas {
     required this.status,
     required this.attachments,
     this.score,
-    this.imageUrl,
     this.fotoPath,
     this.mataPelajaran,
   });
 
+  // Base URL Laravel-mu
+  static const String baseUrl = "http://10.0.2.2:8000";
+
+  String? get imageUrl {
+    if (fotoPath != null && fotoPath!.isNotEmpty) {
+      return '$baseUrl/storage/$fotoPath';
+    }
+    return null;
+  }
+
   factory Tugas.fromJson(Map<String, dynamic> json) {
-    // Debugging print dulu biar kita tahu isi JSON di Flutter
-    print('JSON diterima: ${jsonEncode(json)}');
+    final slug = json['slug'] as Map<String, dynamic>?;
 
-    String guruValue = '';
-    try {
-      final slug = json['slug'];
-      final jadwal = slug != null ? slug['jadwal'] : null;
-      final guru = jadwal != null ? jadwal['guru'] : null;
-      guruValue = guru != null && guru['nama'] != null
-          ? guru['nama'].toString()
-          : 'Tidak ada nama';
-    } catch (e) {
-      print('Error parsing guru name: $e');
-      guruValue = 'Tidak ada nama';
-    }
+    final jadwal = slug?['jadwal'] as Map<String, dynamic>?;
 
-    String mataPelajaranValue = '';
-    try {
-      final slug = json['slug'];
-      final jadwal = slug != null ? slug['jadwal'] : null;
-      final mapel = jadwal != null ? jadwal['mata_pelajaran'] : null;
-      mataPelajaranValue = mapel != null && mapel['nama_mapel'] != null
-          ? mapel['nama_mapel'].toString()
-          : 'Tidak ada nama mapel';
-    } catch (e) {
-      print('Error parsing mapel name: $e');
-      mataPelajaranValue = 'Tidak ada nama mapel';
-    }
+    final guru = jadwal?['guru'] as Map<String, dynamic>?;
+    final guruValue = guru?['nama']?.toString() ?? 'Tidak ada nama';
 
-    // Mengambil fotoPath dan mengubahnya menjadi URL
-    String baseUrl = "http://10.0.2.2:8000/";
-    String? imageUrl;
+    final mapel = jadwal?['mata_pelajaran'] as Map<String, dynamic>?;
+    final mapelValue =
+        mapel?['nama_mapel']?.toString() ?? 'Tidak ada nama mapel';
+
+    // Ambil file path
+    String? fotoPathValue;
+    int attachmentsCount = 0;
+
     if (json['file_path'] != null) {
-      List<dynamic> filePaths = jsonDecode(json['file_path']);
-      if (filePaths.isNotEmpty &&
-          filePaths[0] is Map &&
-          filePaths[0].containsKey('encrypted_name')) {
-        String fotoPath = filePaths[0]['encrypted_name'];
-        imageUrl =
-            '$baseUrl/storage/file_tugas/$fotoPath'; // Menambahkan base URL
+      try {
+        List<dynamic> filePaths = jsonDecode(json['file_path']);
+        attachmentsCount = filePaths.length;
+        if (filePaths.isNotEmpty &&
+            filePaths[0] is Map &&
+            filePaths[0].containsKey('encrypted_name')) {
+          fotoPathValue = filePaths[0]['encrypted_name'];
+        }
+      } catch (e) {
+        print('Error parsing file_path: $e');
       }
     }
 
@@ -78,13 +72,10 @@ class Tugas {
       guru: guruValue,
       deadline: json['deadline'] ?? '',
       status: json['status'] ?? 'Belum dikumpulkan',
-      attachments: json['file_path'] != null
-          ? (jsonDecode(json['file_path']).length)
-          : 0,
+      attachments: attachmentsCount,
       score: json['score'],
-      imageUrl: imageUrl,
-      fotoPath: json['file_path'],
-      mataPelajaran: mataPelajaranValue,
+      fotoPath: fotoPathValue,
+      mataPelajaran: mapelValue,
     );
   }
 }
