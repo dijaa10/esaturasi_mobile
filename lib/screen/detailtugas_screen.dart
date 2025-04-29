@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:typed_data';
 import '../utils/attachment_dialog.dart'; // import modul lampiran
 import '../model/tugas.dart';
+import '../model/task_service.dart'; // import service untuk task
 
 class DetailTugasPage extends StatefulWidget {
   final Tugas task;
@@ -46,6 +47,25 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     } catch (e) {
       print('Error loading image: $e');
       return null;
+    }
+  }
+
+  // Fungsi untuk mengupload tugas
+  Future<void> _uploadTask() async {
+    try {
+      final taskService = TaskService(); // Pastikan TaskService sudah ada
+      bool success = await taskService.uploadTask(widget.task.id.toString());
+      if (success) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Tugas berhasil diupload')));
+      } else {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal mengupload tugas')));
+      }
+    } catch (e) {
+      print('Error uploading task: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan saat mengupload tugas')));
     }
   }
 
@@ -175,20 +195,7 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: Text("Upload Tugas"),
-                            content: Text("Fitur ini akan datang segera."),
-                            actions: [
-                              TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: Text('Tutup')),
-                            ],
-                          ),
-                        );
-                      },
+                      onPressed: _uploadTask, // Mengupload tugas
                       style: ElevatedButton.styleFrom(
                         backgroundColor: subjectColor,
                         foregroundColor: Colors.white,

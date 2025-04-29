@@ -43,11 +43,21 @@ void showAttachmentDialog(BuildContext context, String imageUrl) {
             Positioned(
               top: 10,
               right: 10,
-              child: IconButton(
-                icon: Icon(Icons.download, color: Colors.white, size: 28),
-                onPressed: () async {
-                  await downloadImage(imageUrl, context);
-                },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.download,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  onPressed: () async {
+                    await downloadImage(imageUrl, context);
+                  },
+                ),
               ),
             ),
           ],
