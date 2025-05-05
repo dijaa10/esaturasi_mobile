@@ -230,7 +230,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _deleteProfilePhoto() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString('api_token');
+      String? token = prefs.getString('token');
+
+      if (token == null || token.isEmpty) {
+        _showCustomSnackBar('Token tidak ditemukan. Silakan login ulang.',
+            isSuccess: false);
+        return;
+      }
 
       final response = await http.delete(
         Uri.parse("${baseUrl}api/delete-profile-photo"),
@@ -241,15 +247,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
 
       if (response.statusCode == 200) {
-        setState(() {
-          fotoProfil = "https://via.placeholder.com/150";
-        });
-
-        await prefs.setString('foto_profil', "");
-
-        _showCustomSnackBar('Foto profil berhasil dihapus', isSuccess: true);
+        // Optional: Cek isi response JSON
+        final Map<String, dynamic> responseBody = json.decode(response.body);
+        if (responseBody['message'] != null) {
+          if (mounted) {
+            setState(() {
+              fotoProfil = "https://via.placeholder.com/150";
+            });
+          }
+          await prefs.setString('foto_profil', "");
+          _showCustomSnackBar(responseBody['message'], isSuccess: true);
+        } else {
+          _showCustomSnackBar('Foto profil berhasil dihapus.', isSuccess: true);
+        }
       } else {
-        _showCustomSnackBar('Gagal menghapus foto profil', isSuccess: false);
+        final Map<String, dynamic> errorBody = json.decode(response.body);
+        final message = errorBody['message'] ?? 'Gagal menghapus foto profil.';
+        _showCustomSnackBar(message, isSuccess: false);
       }
     } catch (e) {
       _showCustomSnackBar('Terjadi kesalahan: $e', isSuccess: false);
