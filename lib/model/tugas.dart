@@ -11,6 +11,7 @@ class Tugas {
   final int? score;
   final String? fotoPath;
   final String? mataPelajaran;
+  final String siswaId;
 
   Tugas({
     required this.id,
@@ -23,6 +24,7 @@ class Tugas {
     this.score,
     this.fotoPath,
     this.mataPelajaran,
+    required this.siswaId,
   });
 
   // Base URL Laravel-mu
@@ -76,6 +78,7 @@ class Tugas {
       score: json['score'],
       fotoPath: fotoPathValue,
       mataPelajaran: mapelValue,
+      siswaId: json['siswa_id'].toString(),
     );
   }
 }

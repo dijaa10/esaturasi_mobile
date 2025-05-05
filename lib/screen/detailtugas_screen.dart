@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
-import '../utils/attachment_dialog.dart'; // import modul lampiran
+import '../utils/attachment_dialog.dart';
 import '../model/tugas.dart';
-import '../model/task_service.dart'; // import service untuk task
+import '../utils/file_picker_utils.dart';
+import '../model/task_service.dart';
+import 'dart:io';
 
 class DetailTugasPage extends StatefulWidget {
   final Tugas task;
@@ -29,12 +31,9 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
       return null;
     }
     try {
-      // Menambahkan timeout
-      final response = await http
-          .get(Uri.parse(url))
-          .timeout(Duration(seconds: 10)); // Timeout setelah 10 detik
+      final response =
+          await http.get(Uri.parse(url)).timeout(Duration(seconds: 10));
 
-      // Mengecek jika status code 200 OK
       if (response.statusCode == 200) {
         return response.bodyBytes;
       } else if (response.statusCode == 404) {
@@ -50,22 +49,70 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     }
   }
 
-  // Fungsi untuk mengupload tugas
+  // Fungsi untuk upload tanpa file di-nonaktifkan karena tidak sesuai struktur
+  // Alternatif: bisa arahkan langsung ke pemilihan lampiran
   Future<void> _uploadTask() async {
+    showAttachmentOptions(); // arahkan langsung ke pilihan file
+  }
+
+  void showAttachmentOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext ctx) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: Icon(Icons.image),
+                title: Text('Pilih Gambar'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final file = await FilePickerUtil.pickImage();
+                  if (file != null) {
+                    _uploadSelectedFile(file);
+                  }
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.insert_drive_file),
+                title: Text('Pilih Dokumen'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final file = await FilePickerUtil.pickDocument();
+                  if (file != null) {
+                    _uploadSelectedFile(file);
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _uploadSelectedFile(File file) async {
     try {
-      final taskService = TaskService(); // Pastikan TaskService sudah ada
-      bool success = await taskService.uploadTask(widget.task.id.toString());
+      final taskService = TaskService();
+      bool success = await taskService.uploadTaskWithFile(
+        tugasId: widget.task.id.toString(), // Menggunakan nama parameter
+        siswaId: widget.task.siswaId.toString(), // Menggunakan nama parameter
+        file: file, // Menggunakan nama parameter
+      );
       if (success) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Tugas berhasil diupload')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Tugas berhasil diupload')),
+        );
       } else {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal mengupload tugas')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengupload tugas')),
+        );
       }
     } catch (e) {
-      print('Error uploading task: $e');
+      print('Upload error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Terjadi kesalahan saat mengupload tugas')));
+        SnackBar(content: Text('Terjadi kesalahan saat upload')),
+      );
     }
   }
 
@@ -195,7 +242,7 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: _uploadTask, // Mengupload tugas
+                      onPressed: _uploadTask, // diarahkan ke pemilihan file
                       style: ElevatedButton.styleFrom(
                         backgroundColor: subjectColor,
                         foregroundColor: Colors.white,
