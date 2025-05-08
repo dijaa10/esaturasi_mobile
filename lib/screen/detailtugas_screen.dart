@@ -19,6 +19,7 @@ class DetailTugasPage extends StatefulWidget {
 
 class _DetailTugasPageState extends State<DetailTugasPage> {
   late Future<Uint8List?> imageBytes;
+  File? _selectedFile; // Tambahan untuk menyimpan file terpilih
 
   @override
   void initState() {
@@ -33,26 +34,18 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     try {
       final response =
           await http.get(Uri.parse(url)).timeout(Duration(seconds: 10));
-
       if (response.statusCode == 200) {
         return response.bodyBytes;
-      } else if (response.statusCode == 404) {
-        print('Gambar tidak ditemukan (404)');
-        return null;
       } else {
-        print('Error loading image: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('Error loading image: $e');
       return null;
     }
   }
 
-  // Fungsi untuk upload tanpa file di-nonaktifkan karena tidak sesuai struktur
-  // Alternatif: bisa arahkan langsung ke pemilihan lampiran
   Future<void> _uploadTask() async {
-    showAttachmentOptions(); // arahkan langsung ke pilihan file
+    showAttachmentOptions();
   }
 
   void showAttachmentOptions() {
@@ -69,7 +62,10 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                   Navigator.pop(ctx);
                   final file = await FilePickerUtil.pickImage();
                   if (file != null) {
-                    _uploadSelectedFile(file);
+                    setState(() {
+                      _selectedFile = file;
+                    });
+                    _showUploadConfirmation(file);
                   }
                 },
               ),
@@ -80,7 +76,10 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                   Navigator.pop(ctx);
                   final file = await FilePickerUtil.pickDocument();
                   if (file != null) {
-                    _uploadSelectedFile(file);
+                    setState(() {
+                      _selectedFile = file;
+                    });
+                    _showUploadConfirmation(file);
                   }
                 },
               ),
@@ -91,15 +90,44 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     );
   }
 
+  void _showUploadConfirmation(File file) async {
+    bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: Text('Konfirmasi Upload'),
+          content: Text('Apakah kamu yakin ingin mengirim file ini?'),
+          actions: [
+            TextButton(
+              child: Text('Batal'),
+              onPressed: () => Navigator.of(ctx).pop(false),
+            ),
+            ElevatedButton(
+              child: Text('Ya, Upload'),
+              onPressed: () => Navigator.of(ctx).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      _uploadSelectedFile(file);
+    }
+  }
+
   Future<void> _uploadSelectedFile(File file) async {
     try {
       final taskService = TaskService();
       bool success = await taskService.uploadTaskWithFile(
-        tugasId: widget.task.id.toString(), // Menggunakan nama parameter
-        siswaId: widget.task.siswaId.toString(), // Menggunakan nama parameter
-        file: file, // Menggunakan nama parameter
+        tugasId: "1",
+        siswaId: "1",
+        file: file,
       );
       if (success) {
+        setState(() {
+          _selectedFile = null;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Tugas berhasil diupload')),
         );
@@ -109,7 +137,6 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
         );
       }
     } catch (e) {
-      print('Upload error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Terjadi kesalahan saat upload')),
       );
@@ -132,17 +159,8 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 widget.task.judul,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  shadows: [
-                    Shadow(
-                      offset: Offset(1, 1),
-                      blurRadius: 3.0,
-                      color: Colors.black.withOpacity(0.5),
-                    ),
-                  ],
-                ),
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
               background: FutureBuilder<Uint8List?>(
                 future: imageBytes,
@@ -167,26 +185,11 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                       ],
                     );
                   } else {
-                    return Container(
-                      color: subjectColor,
-                      child: Center(
-                        child: Icon(
-                          _getSubjectIcon(widget.task.judul),
-                          size: 80,
-                          color: Colors.white.withOpacity(0.5),
-                        ),
-                      ),
-                    );
+                    return Container(color: subjectColor);
                   }
                 },
               ),
             ),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.edit, color: Colors.white),
-                onPressed: () {},
-              ),
-            ],
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -196,10 +199,10 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                 children: [
                   _buildStatusBadge(widget.task.status),
                   SizedBox(height: 20),
-                  _buildSectionHeader("DESKRIPSI"),
+                  Text("DESKRIPSI",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   SizedBox(height: 8),
-                  Text(widget.task.deskripsi,
-                      style: TextStyle(fontSize: 16, height: 1.5)),
+                  Text(widget.task.deskripsi),
                   SizedBox(height: 24),
                   Container(
                     padding: EdgeInsets.all(16),
@@ -225,10 +228,8 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                                   context, widget.task.imageUrl!);
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content:
-                                        Text('Tidak ada lampiran tersedia')),
-                              );
+                                  SnackBar(
+                                      content: Text('Tidak ada lampiran')));
                             }
                           },
                           child: _buildInfoRow(Icons.attach_file, "Lampiran",
@@ -237,25 +238,62 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                       ],
                     ),
                   ),
-                  SizedBox(height: 32),
+                  SizedBox(height: 20),
+
+                  // 🔽 Container kecil menampilkan nama file yang dipilih
+                  if (_selectedFile != null)
+                    Container(
+                      margin: EdgeInsets.only(bottom: 16),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.grey[200],
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.insert_drive_file,
+                              color: Colors.grey[700]),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _selectedFile!.path.split('/').last,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.close, color: Colors.red),
+                            onPressed: () {
+                              setState(() {
+                                _selectedFile = null;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // 🔽 Tombol "Mengerjakan Tugas"
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: _uploadTask, // diarahkan ke pemilihan file
+                      onPressed: _uploadTask,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: subjectColor,
-                        foregroundColor: Colors.white,
-                        elevation: 2,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: Text('Mengerjakan Tugas',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        'Mengerjakan Tugas',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white, // Ganti sesuai kebutuhan kamu
+                        ),
+                      ),
                     ),
                   ),
-                  SizedBox(height: 20),
                 ],
               ),
             ),
@@ -265,34 +303,22 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey[600],
-          letterSpacing: 1.2),
-    );
-  }
-
+  // Fungsi tambahan yang tetap kamu miliki...
   Widget _buildStatusBadge(String status) {
+    Color color = _getStatusColor(status);
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: _getStatusColor(status).withOpacity(0.2),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _getStatusColor(status), width: 1),
+        color: color.withOpacity(0.2),
+        border: Border.all(color: color),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_getStatusIcon(status),
-              size: 16, color: _getStatusColor(status)),
+          Icon(Icons.check_circle, size: 16, color: color),
           SizedBox(width: 4),
-          Text(status,
-              style: TextStyle(
-                  color: _getStatusColor(status), fontWeight: FontWeight.bold)),
+          Text(status, style: TextStyle(color: color)),
         ],
       ),
     );
@@ -324,42 +350,24 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     );
   }
 
-  Color _getSubjectColor(String subjectName) {
-    switch (subjectName.toLowerCase()) {
-      case 'matematika':
-        return Colors.blue;
-      case 'bahasa indonesia':
-        return Colors.red;
-      case 'ipa':
-        return Colors.green;
-      case 'ips':
-        return Colors.orange;
-      case 'bahasa inggris':
-        return Colors.purple;
-      case 'pendidikan agama':
-        return Colors.teal;
-      default:
-        return Colors.blueGrey;
-    }
-  }
+  final Map<String, Color> _subjectColors = {};
+  final List<Color> _availableColors = [
+    Colors.red,
+    Colors.green,
+    Colors.blue,
+    Colors.orange,
+    Colors.purple,
+    Colors.teal,
+    Colors.pink,
+    Colors.brown,
+  ];
 
-  IconData _getSubjectIcon(String subjectName) {
-    switch (subjectName.toLowerCase()) {
-      case 'matematika':
-        return Icons.calculate;
-      case 'bahasa indonesia':
-        return Icons.language;
-      case 'ipa':
-        return Icons.science;
-      case 'ips':
-        return Icons.public;
-      case 'bahasa inggris':
-        return Icons.translate;
-      case 'pendidikan agama':
-        return Icons.menu_book;
-      default:
-        return Icons.assignment;
+  Color _getSubjectColor(String subjectName) {
+    if (!_subjectColors.containsKey(subjectName)) {
+      _subjectColors[subjectName] =
+          _availableColors[_subjectColors.length % _availableColors.length];
     }
+    return _subjectColors[subjectName]!;
   }
 
   Color _getStatusColor(String status) {
@@ -375,37 +383,19 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     }
   }
 
-  IconData _getStatusIcon(String status) {
-    switch (status.toLowerCase()) {
-      case 'sudah dikumpulkan':
-        return Icons.check_circle;
-      case 'sedang dikerjakan':
-        return Icons.pending;
-      case 'menunggu':
-        return Icons.access_time;
-      default:
-        return Icons.circle;
-    }
-  }
-
   String _formatDeadline(String deadlineStr) {
     try {
       DateTime deadline = DateTime.parse(deadlineStr);
       DateTime now = DateTime.now();
-      Duration difference = deadline.difference(now);
-      if (difference.isNegative) {
-        return 'Tenggat terlewat!';
-      } else if (difference.inDays == 0) {
+      Duration diff = deadline.difference(now);
+      if (diff.isNegative) return 'Tenggat terlewat!';
+      if (diff.inDays == 0)
         return 'Hari ini, ${DateFormat('HH:mm').format(deadline)}';
-      } else if (difference.inDays == 1) {
+      if (diff.inDays == 1)
         return 'Besok, ${DateFormat('HH:mm').format(deadline)}';
-      } else if (difference.inDays < 7) {
-        return '${difference.inDays} hari lagi';
-      } else {
-        return DateFormat('dd MMM yyyy, HH:mm').format(deadline);
-      }
-    } catch (e) {
-      return 'Format tanggal tidak valid';
+      return '${diff.inDays} hari lagi';
+    } catch (_) {
+      return 'Tanggal tidak valid';
     }
   }
 

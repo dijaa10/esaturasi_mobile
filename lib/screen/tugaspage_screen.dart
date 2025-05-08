@@ -19,21 +19,30 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   bool _isSearching = false;
   List<Tugas> tasks = [];
   List<Tugas> filteredTasks = [];
-  String _studentName = "Ahmad Fauzi";
-  String _className = "XI IPA 2";
-  String _currentSemester = "Semester 2 - 2024/2025";
-  String currentTab = 'Semua'; // Track the current selected tab
   String nama = "";
   String namaKelas = "Memuat...";
   String fotoProfil = "";
+  String currentTab = 'Semua';
   final String baseUrl = "http://10.0.2.2:8000/";
+
+  final Map<String, Color> _subjectColors = {};
+  final List<Color> _availableColors = [
+    Colors.red,
+    Colors.green,
+    Colors.blue,
+    Colors.orange,
+    Colors.purple,
+    Colors.teal,
+    Colors.pink,
+    Colors.brown,
+  ];
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
-    _tabController = TabController(length: 3, vsync: this);
-    fetchTasks(); // Fetch tasks when the page loads
+    _tabController = TabController(length: 2, vsync: this);
+    fetchTasks();
   }
 
   Future<void> _loadUserData() async {
@@ -68,15 +77,12 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   }
 
   Future<void> fetchTasks() async {
-    final response =
-        await http.get(Uri.parse('http://10.0.2.2:8000/api/tugas'));
-
+    final response = await http.get(Uri.parse('${baseUrl}api/tugas'));
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);
       setState(() {
         tasks = jsonResponse.map((task) => Tugas.fromJson(task)).toList();
-        filteredTasks =
-            List.from(tasks); // Initialize filtered tasks with all tasks
+        filteredTasks = List.from(tasks);
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -88,18 +94,14 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   void _filterTasks() {
     setState(() {
       filteredTasks = tasks.where((task) {
-        return '${task.mataPelajaran}'
-            .toLowerCase()
-            .contains(_searchQuery.toLowerCase());
+        final mapel = task.mataPelajaran ?? '';
+        return mapel.toLowerCase().contains(_searchQuery.toLowerCase());
       }).toList();
 
-      // Filter tasks based on the selected tab
-      if (currentTab == 'Menunggu') {
-        filteredTasks =
-            filteredTasks.where((task) => task.status == 'Menunggu').toList();
-      } else if (currentTab == 'Selesai') {
-        filteredTasks =
-            filteredTasks.where((task) => task.status == 'Selesai').toList();
+      if (currentTab == 'Selesai') {
+        filteredTasks = filteredTasks
+            .where((task) => task.status == 'Sudah Dikumpulkan')
+            .toList();
       }
     });
   }
@@ -112,22 +114,11 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   }
 
   Color _getSubjectColor(String subjectName) {
-    switch (subjectName) {
-      case 'kelistrikan kendaraan':
-        return Colors.blue;
-      case 'Bahasa Indonesia':
-        return Colors.red;
-      case 'IPA':
-        return Colors.green;
-      case 'IPS':
-        return Colors.orange;
-      case 'Bahasa Inggris':
-        return Colors.purple;
-      case 'Pendidikan Agama':
-        return Colors.teal;
-      default:
-        return Colors.grey;
+    if (!_subjectColors.containsKey(subjectName)) {
+      _subjectColors[subjectName] =
+          _availableColors[_subjectColors.length % _availableColors.length];
     }
+    return _subjectColors[subjectName]!;
   }
 
   String _formatDeadline(String deadlineStr) {
@@ -136,18 +127,15 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
       DateTime now = DateTime.now();
       Duration difference = deadline.difference(now);
 
-      if (difference.isNegative) {
-        return 'Tenggat terlewat!';
-      } else if (difference.inDays == 0) {
+      if (difference.isNegative) return 'Tenggat terlewat!';
+      if (difference.inDays == 0)
         return 'Hari ini, ${DateFormat('HH:mm').format(deadline)}';
-      } else if (difference.inDays == 1) {
+      if (difference.inDays == 1)
         return 'Besok, ${DateFormat('HH:mm').format(deadline)}';
-      } else if (difference.inDays < 7) {
-        return '${difference.inDays} hari lagi';
-      } else {
-        return DateFormat('dd MMM yyyy, HH:mm').format(deadline);
-      }
-    } catch (e) {
+      if (difference.inDays < 7) return '${difference.inDays} hari lagi';
+
+      return DateFormat('dd MMM yyyy, HH:mm').format(deadline);
+    } catch (_) {
       return 'Format tanggal tidak valid';
     }
   }
@@ -170,7 +158,6 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                       final task = filteredTasks[index];
                       return GestureDetector(
                         onTap: () {
-                          // Navigasi ke halaman detail tugas saat kartu tugas diketuk
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -198,6 +185,7 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
             _isSearching = false;
             _searchQuery = '';
             _searchController.clear();
+            _filterTasks();
           });
         },
       ),
@@ -205,7 +193,7 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
         controller: _searchController,
         style: TextStyle(color: Colors.white),
         decoration: InputDecoration(
-          hintText: 'Cari Tugas Sesuai Mapel',
+          hintText: 'Cari Tugas',
           hintStyle: TextStyle(color: Colors.white70),
           border: InputBorder.none,
         ),
@@ -225,6 +213,7 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
               _isSearching = false;
               _searchQuery = '';
               _searchController.clear();
+              _filterTasks();
             });
           },
         ),
@@ -264,29 +253,8 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                                   width: 60,
                                   height: 60,
                                   fit: BoxFit.cover,
-                                  loadingBuilder:
-                                      (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Center(
-                                      child: CircularProgressIndicator(
-                                        value: loadingProgress
-                                                    .expectedTotalBytes !=
-                                                null
-                                            ? loadingProgress
-                                                    .cumulativeBytesLoaded /
-                                                loadingProgress
-                                                    .expectedTotalBytes!
-                                            : null,
-                                      ),
-                                    );
-                                  },
-                                  errorBuilder: (context, error, stackTrace) {
-                                    print("ERROR loading image: $error");
-                                    return const Icon(Icons.person,
-                                        size: 40, color: Colors.grey);
-                                  },
                                 )
-                              : const Icon(Icons.person,
+                              : Icon(Icons.person,
                                   size: 60, color: Colors.grey),
                         ),
                       ),
@@ -294,36 +262,25 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            nama,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            namaKelas,
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
+                          Text(nama,
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16)),
+                          Text(namaKelas,
+                              style: TextStyle(
+                                  color: Colors.white70, fontSize: 12)),
                         ],
                       ),
                     ],
                   ),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.search, color: Colors.white),
-                        onPressed: () {
-                          setState(() {
-                            _isSearching = true;
-                          });
-                        },
-                      ),
-                    ],
+                  IconButton(
+                    icon: Icon(Icons.search, color: Colors.white),
+                    onPressed: () {
+                      setState(() {
+                        _isSearching = true;
+                      });
+                    },
                   ),
                 ],
               ),
@@ -338,13 +295,7 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 2,
-            offset: Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(blurRadius: 2, color: Colors.black12)],
       ),
       child: TabBar(
         controller: _tabController,
@@ -353,34 +304,14 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
         indicatorColor: Color(0xFF1A237E),
         indicatorWeight: 3,
         onTap: (index) {
-          if (index == 0) {
-            setState(() {
-              currentTab = 'Semua';
-            });
-          } else if (index == 1) {
-            setState(() {
-              currentTab = 'Menunggu';
-            });
-          } else if (index == 2) {
-            setState(() {
-              currentTab = 'Selesai';
-            });
-          }
+          setState(() {
+            currentTab = index == 0 ? 'Semua' : 'Selesai';
+          });
           _filterTasks();
         },
         tabs: [
-          Tab(
-            icon: Icon(Icons.assignment),
-            text: 'Semua',
-          ),
-          Tab(
-            icon: Icon(Icons.pending_actions),
-            text: 'Menunggu',
-          ),
-          Tab(
-            icon: Icon(Icons.check_circle),
-            text: 'Selesai',
-          ),
+          Tab(icon: Icon(Icons.assignment), text: 'Semua'),
+          Tab(icon: Icon(Icons.check_circle), text: 'Selesai'),
         ],
       ),
     );
@@ -398,20 +329,15 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: subjectColor.withOpacity(0.1),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
               children: [
                 Icon(Icons.assignment, color: subjectColor, size: 20),
                 SizedBox(width: 8),
-                Text(
-                  '${task.mataPelajaran}',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold, color: subjectColor),
-                ),
+                Text(task.judul,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: subjectColor)),
                 Spacer(),
                 _buildStatusChip(task.status),
               ],
@@ -422,10 +348,9 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  task.judul,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                Text(task.judul,
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
                 Text(task.deskripsi),
                 SizedBox(height: 16),

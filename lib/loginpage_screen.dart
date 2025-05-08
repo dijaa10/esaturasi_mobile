@@ -278,27 +278,42 @@ class _LoginPageState extends State<LoginPage>
   Future<void> saveUserData(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
 
+    // Memeriksa token
+    String? token = prefs.getString('token');
+    print('Token saat ini: $token');
+
+    // Memastikan refresh_token ada sebelum menyimpannya
     if (data['token'] != null) {
       await prefs.setString('token', data['token']);
+    } else {
+      print('Token tidak ditemukan.');
     }
 
+    // Menyimpan refresh_token jika ada
+    if (data['refresh_token'] != null) {
+      await prefs.setString('refresh_token', data['refresh_token']);
+    } else {
+      print('Refresh token tidak ditemukan.');
+    }
+
+    // Menyimpan data siswa jika ada
     if (data['siswa'] != null) {
       await prefs.setString('siswa_id', data['siswa']['id'].toString());
       await prefs.setString('nisn', data['siswa']['nisn']);
       await prefs.setString('nama', data['siswa']['nama']);
       await prefs.setString('email', data['siswa']['email']);
-      if (data['siswa']['foto_profil'] != null) {
-        prefs.setString('foto_profil', data['siswa']['foto_profil']);
-      } else {
-        prefs.setString('foto_profil', "https://via.placeholder.com/150");
-      }
 
+      String fotoProfil =
+          data['siswa']['foto_profil'] ?? 'https://via.placeholder.com/150';
+      await prefs.setString('foto_profil', fotoProfil);
       await prefs.setString('kelas_id', data['siswa']['kelas_id'].toString());
       await prefs.setString(
           'jurusan_id', data['siswa']['jurusan_id'].toString());
-      print('Foto Profil: ${data['siswa']['foto_profil']}');
+
+      print('Foto Profil: $fotoProfil');
     }
 
+    // Set isLoggedIn flag
     await prefs.setBool('isLoggedIn', true);
   }
 
