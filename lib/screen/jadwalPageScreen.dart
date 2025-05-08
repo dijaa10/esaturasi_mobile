@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../model/jadwal.dart';
 import 'dart:convert'; // Import untuk decode JSON
+import 'materipage.dart';
 
 class MapelPage extends StatefulWidget {
   @override
@@ -528,8 +529,12 @@ class AnimatedCard extends StatelessWidget {
                 leading: Icon(Icons.assignment, color: Colors.green),
                 title: Text('Lihat Materi'),
                 onTap: () {
-                  Navigator.pop(context);
-                  // Tambahkan aksi lihat materi
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MateriPage(mapel: mapel),
+                    ),
+                  );
                 },
               ),
             ],

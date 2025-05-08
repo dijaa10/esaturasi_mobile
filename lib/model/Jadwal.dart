@@ -9,6 +9,7 @@ class Jadwal {
   final String jamMulai;
   final String jamSelesai;
   final String guru;
+  final int idMapel;
 
   Jadwal({
     required this.id,
@@ -18,6 +19,7 @@ class Jadwal {
     required this.jamMulai,
     required this.jamSelesai,
     required this.guru,
+    required this.idMapel,
   });
 
   factory Jadwal.fromJson(Map<String, dynamic> json) {
@@ -103,6 +105,7 @@ class Jadwal {
       jamMulai: jamMulaiValue,
       jamSelesai: jamSelesaiValue,
       guru: guruValue,
+      idMapel: json['mata_pelajaran_id'],
     );
   }
 }
