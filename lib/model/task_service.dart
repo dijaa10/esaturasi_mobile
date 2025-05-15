@@ -2,118 +2,135 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 
 class TaskService {
-  // Metode untuk mendapatkan token yang valid
-  Future<String?> getValidToken() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString('token');
-      print('Token yang disimpan: $token');
+  final AuthService authService = AuthService();
+  final String baseUrl = "http://10.0.2.2:8000/api";
 
-      if (token == null) {
-        print('Token tidak ditemukan, user belum login.');
-        return null;
-      }
-
-      return token;
-    } catch (e) {
-      print('Error saat mendapatkan token: $e');
-      return null;
-    }
-  }
-
-  // Metode upload file dengan penanganan tipe data yang benar
   Future<bool> uploadTaskWithFile({
     required String tugasId,
     required File file,
     required String siswaId,
+    int retry = 2, // Tingkatkan batas retry menjadi 2
   }) async {
     try {
-      // Dapatkan token yang valid
-      String? token = await getValidToken();
-
+      // Dapatkan token valid
+      String? token = await authService.getValidToken();
       if (token == null) {
-        print('Tidak bisa mendapatkan token yang valid.');
+        print('Tidak dapat mendapatkan token valid untuk upload');
         return false;
       }
 
-      // Gunakan URI yang benar untuk API endpoint
-      var uri = Uri.parse('http://10.0.2.2:8000/api/pengumpulan-tugas');
+      // Log untuk debugging
+      print(
+          'Menggunakan token: ${token.substring(0, token.length > 10 ? 10 : token.length)}...');
 
-      // Buat request multipart
+      var uri = Uri.parse('$baseUrl/pengumpulan-tugas');
       var request = http.MultipartRequest('POST', uri);
 
-      // Tambahkan header yang diperlukan
+      // Pastikan format header benar
       request.headers['Authorization'] = 'Bearer $token';
       request.headers['Accept'] = 'application/json';
 
-      // Pastikan tugas_id dan siswa_id adalah angka integer
-      // Parse string menjadi int lalu kembali ke string untuk memastikan format yang benar
+      // Debug header
+      print('Headers request: ${request.headers}');
+
+      // Konversi ID
       int tugasIdInt;
       int siswaIdInt;
-
       try {
         tugasIdInt = int.parse(tugasId);
         siswaIdInt = int.parse(siswaId);
       } catch (e) {
         print('Error konversi ID: $e');
-        print('tugas_id: $tugasId, siswa_id: $siswaId');
         return false;
       }
 
-      // Tambahkan field dengan format yang benar - setelah konversi ke int
       request.fields['tugas_id'] = tugasIdInt.toString();
       request.fields['siswa_id'] = siswaIdInt.toString();
 
-      // Log data yang akan dikirim untuk debugging
-      print('Mengirim data: tugas_id=${tugasIdInt}, siswa_id=${siswaIdInt}');
+      // Debug fields
+      print('Fields request: ${request.fields}');
 
-      // Tambahkan file
-      var fileStream = await http.MultipartFile.fromPath('file', file.path);
-      print(
-          'File yang akan diunggah: ${file.path}, ukuran: ${await file.length()} bytes');
-      request.files.add(fileStream);
-
-      // Kirim request
-      print('Mengirim request ke ${uri.toString()}');
-      var streamedResponse =
-          await request.send().timeout(Duration(seconds: 30));
-
-      // Proses respons
-      var responseBody = await streamedResponse.stream.bytesToString();
-
-      if (streamedResponse.statusCode == 200 ||
-          streamedResponse.statusCode == 201) {
-        print('Upload sukses dengan status: ${streamedResponse.statusCode}');
-        print('Respons: $responseBody');
-        return true;
+      // Cek file
+      if (file.existsSync()) {
+        var fileStream = await http.MultipartFile.fromPath('file', file.path);
+        request.files.add(fileStream);
+        print('File yang diunggah: ${file.path}');
+        print('File size: ${await file.length()} bytes');
       } else {
-        print('Upload gagal: ${streamedResponse.statusCode}, $responseBody');
-
-        // Analisis kesalahan validasi
-        if (streamedResponse.statusCode == 422) {
-          try {
-            var errorData = jsonDecode(responseBody);
-            if (errorData['errors'] != null) {
-              print('Detail validasi error:');
-              errorData['errors'].forEach((field, errors) {
-                print('- $field: ${errors.join(", ")}');
-              });
-            }
-          } catch (e) {
-            print('Tidak dapat parse detail error: $e');
-          }
-        } else if (streamedResponse.statusCode == 401) {
-          print('Token tidak valid atau expired, perlu login ulang.');
-          // Arahkan ke halaman login jika token expired
-          // Misalnya, arahkan pengguna ke login page
-        }
-
+        print('File tidak ditemukan: ${file.path}');
         return false;
       }
+
+      print('Mengirim request ke ${uri.toString()}');
+
+      // Gunakan timeout yang lebih panjang untuk file besar
+      var streamedResponse =
+          await request.send().timeout(Duration(seconds: 60));
+
+      // Log response code segera
+      print('Response status code: ${streamedResponse.statusCode}');
+
+      // Ambil response body
+      var responseBytes = await streamedResponse.stream.toBytes();
+      var responseBody = utf8.decode(responseBytes);
+
+      // Log full response untuk debugging
+      print('Response headers: ${streamedResponse.headers}');
+      print('Response body: $responseBody');
+
+      // Handle responses
+      if (streamedResponse.statusCode == 200 ||
+          streamedResponse.statusCode == 201) {
+        print('Upload sukses!');
+        return true;
+      } else if (streamedResponse.statusCode == 401 && retry > 0) {
+        print('401: Token expired, mencoba refresh dan upload ulang...');
+
+        // Tunggu sebentar sebelum refresh
+        await Future.delayed(Duration(milliseconds: 500));
+
+        bool refreshed = await authService.refreshToken();
+        if (refreshed) {
+          // Berikan delay sebelum mencoba upload ulang
+          await Future.delayed(Duration(seconds: 1));
+
+          return await uploadTaskWithFile(
+            tugasId: tugasId,
+            file: file,
+            siswaId: siswaId,
+            retry: retry - 1,
+          );
+        } else {
+          print('Refresh gagal, tidak dapat melanjutkan upload.');
+          return false;
+        }
+      } else if (streamedResponse.statusCode == 429) {
+        print('429: Too Many Attempts - tunggu beberapa saat.');
+        if (retry > 0) {
+          // Tunggu lebih lama untuk rate limit
+          await Future.delayed(Duration(seconds: 5));
+          return await uploadTaskWithFile(
+            tugasId: tugasId,
+            file: file,
+            siswaId: siswaId,
+            retry: retry - 1,
+          );
+        }
+      } else {
+        // Coba parse respons JSON untuk informasi error yang lebih detail
+        try {
+          var jsonResponse = jsonDecode(responseBody);
+          print('Error details: $jsonResponse');
+        } catch (e) {
+          // Jika tidak bisa di-parse sebagai JSON, gunakan respons mentah
+        }
+      }
+
+      print('Upload gagal: ${streamedResponse.statusCode}, $responseBody');
+      return false;
     } catch (e) {
       if (e is SocketException) {
         print('Tidak ada koneksi internet: $e');
