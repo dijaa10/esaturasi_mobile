@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:esaturasi/screen/elearninghomepage_scren.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -274,47 +275,64 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 
-  // Menyimpan data user setelah login berhasil
-  Future<void> saveUserData(Map<String, dynamic> data) async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<bool> saveUserData(Map data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final secureStorage = FlutterSecureStorage();
 
-    // Memeriksa token
-    String? token = prefs.getString('token');
-    print('Token saat ini: $token');
+      // Simpan token secara aman di secure storage
+      if (data['token'] != null && data['token'].toString().isNotEmpty) {
+        await secureStorage.write(key: 'token', value: data['token']);
+        print('Access Token disimpan.');
+      } else {
+        print('Token tidak ditemukan atau kosong.');
+        return false;
+      }
 
-    // Memastikan refresh_token ada sebelum menyimpannya
-    if (data['token'] != null) {
-      await prefs.setString('token', data['token']);
-    } else {
-      print('Token tidak ditemukan.');
+      // Simpan refresh token secara aman di secure storage
+      if (data['refresh_token'] != null &&
+          data['refresh_token'].toString().isNotEmpty) {
+        await secureStorage.write(
+            key: 'refresh_token', value: data['refresh_token']);
+        print('Refresh Token disimpan.');
+      } else {
+        print('Refresh token tidak ditemukan.');
+      }
+
+      // Simpan data siswa dengan pengecekan null dan handle error
+      if (data['siswa'] != null) {
+        final siswa = data['siswa'];
+
+        try {
+          await prefs.setString('siswa_id', siswa['id']?.toString() ?? '');
+          await prefs.setString('nisn', siswa['nisn']?.toString() ?? '');
+          await prefs.setString('nama', siswa['nama']?.toString() ?? '');
+          await prefs.setString('email', siswa['email']?.toString() ?? '');
+
+          final fotoProfil =
+              siswa['foto_profil'] ?? 'https://via.placeholder.com/150';
+          await prefs.setString('foto_profil', fotoProfil);
+
+          await prefs.setString(
+              'kelas_id', siswa['kelas_id']?.toString() ?? '');
+          await prefs.setString(
+              'jurusan_id', siswa['jurusan_id']?.toString() ?? '');
+
+          print('Data siswa berhasil disimpan. Foto Profil: $fotoProfil');
+        } catch (e) {
+          print('Error saat menyimpan data siswa: $e');
+          return false;
+        }
+      }
+
+      // Simpan status login di SharedPreferences
+      await prefs.setBool('isLoggedIn', true);
+      print('Status login disimpan.');
+      return true;
+    } catch (e) {
+      print('Error saat menyimpan data user: $e');
+      return false;
     }
-
-    // Menyimpan refresh_token jika ada
-    if (data['refresh_token'] != null) {
-      await prefs.setString('refresh_token', data['refresh_token']);
-    } else {
-      print('Refresh token tidak ditemukan.');
-    }
-
-    // Menyimpan data siswa jika ada
-    if (data['siswa'] != null) {
-      await prefs.setString('siswa_id', data['siswa']['id'].toString());
-      await prefs.setString('nisn', data['siswa']['nisn']);
-      await prefs.setString('nama', data['siswa']['nama']);
-      await prefs.setString('email', data['siswa']['email']);
-
-      String fotoProfil =
-          data['siswa']['foto_profil'] ?? 'https://via.placeholder.com/150';
-      await prefs.setString('foto_profil', fotoProfil);
-      await prefs.setString('kelas_id', data['siswa']['kelas_id'].toString());
-      await prefs.setString(
-          'jurusan_id', data['siswa']['jurusan_id'].toString());
-
-      print('Foto Profil: $fotoProfil');
-    }
-
-    // Set isLoggedIn flag
-    await prefs.setBool('isLoggedIn', true);
   }
 
   @override

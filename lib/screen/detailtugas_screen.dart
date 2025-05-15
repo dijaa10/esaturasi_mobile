@@ -120,8 +120,8 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     try {
       final taskService = TaskService();
       bool success = await taskService.uploadTaskWithFile(
-        tugasId: "1",
-        siswaId: "1",
+        tugasId: "2",
+        siswaId: "2",
         file: file,
       );
       if (success) {

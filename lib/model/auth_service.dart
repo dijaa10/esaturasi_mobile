@@ -1,26 +1,33 @@
-// auth_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:math';
 
 class AuthService {
-  // URL API
-  final String baseUrl = "http://10.0.2.2:8000/api/siswa/login";
+  final String baseUrl = "http://10.0.2.2:8000/api";
+  final FlutterSecureStorage secureStorage = FlutterSecureStorage();
 
-  // Metode untuk mengecek validitas token
-  Future<bool> checkToken() async {
+  Future<String?> getValidToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString('token');
+      String? token = await secureStorage.read(key: 'token');
+      print('Token yang disimpan: $token');
+      return token;
+    } catch (e) {
+      print('Error saat mendapatkan token: $e');
+      return null;
+    }
+  }
 
+  Future<bool> checkToken({bool allowRetry = true}) async {
+    try {
+      String? token = await secureStorage.read(key: 'token');
       if (token == null) {
-        print('Token tidak ada di SharedPreferences');
+        print('Token tidak ada di secure storage');
         return false;
       }
 
-      // Coba endpoint yang memerlukan autentikasi
       var response = await http.get(
-        Uri.parse('$baseUrl/user'), // Sesuaikan dengan endpoint untuk cek user
+        Uri.parse('$baseUrl/siswa/profile'),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
@@ -31,11 +38,11 @@ class AuthService {
 
       if (response.statusCode == 200) {
         return true;
-      } else if (response.statusCode == 401) {
-        // Token tidak valid, coba refresh token
+      } else if (response.statusCode == 401 && allowRetry) {
+        print('Token tidak valid, mencoba refresh token...');
         return await refreshToken();
       } else {
-        print('Error cek token: ${response.body}');
+        print('Token cek error: ${response.body}');
         return false;
       }
     } catch (e) {
@@ -44,82 +51,86 @@ class AuthService {
     }
   }
 
-  // Metode untuk memperbarui token dengan refresh token
+  bool _isRefreshing = false;
   Future<bool> refreshToken() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      String? refreshToken = prefs.getString('refresh_token');
+    // Mencegah multiple refresh secara bersamaan
+    if (_isRefreshing) {
+      print('Refresh token sedang berjalan, tunggu...');
+      await Future.delayed(Duration(milliseconds: 500));
+      return await checkToken(allowRetry: false);
+    }
 
+    _isRefreshing = true;
+
+    try {
+      String? refreshToken = await secureStorage.read(key: 'refresh_token');
       if (refreshToken == null) {
         print('Refresh token tidak ditemukan');
+        _isRefreshing = false;
         return false;
       }
 
+      print(
+          'Mengirim refresh request dengan refresh token: ${refreshToken.substring(0, min(10, refreshToken.length))}...');
+
       var response = await http.post(
-        Uri.parse('$baseUrl/refresh'),
+        Uri.parse('$baseUrl/refresh-token'),
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'refresh_token': refreshToken,
-        }),
+        body: jsonEncode({'refresh_token': refreshToken}),
       );
+
+      print('Respons refresh token status: ${response.statusCode}');
+      print('Respons refresh token body: ${response.body}');
 
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
 
+        // Sesuaikan dengan format respons API Anda
         if (data['token'] != null) {
-          await prefs.setString('token', data['token']);
+          // Simpan token baru
+          await secureStorage.write(key: 'token', value: data['token']);
+          print('Token berhasil disimpan');
 
-          // Simpan refresh token baru jika ada
-          if (data['refresh_token'] != null) {
-            await prefs.setString('refresh_token', data['refresh_token']);
-          }
-
-          print('Token berhasil diperbarui');
-          return true;
+          // Verifikasi token baru
+          _isRefreshing = false;
+          return await checkToken(allowRetry: false);
+        } else {
+          print('Data token tidak ditemukan dalam respons: $data');
+          _isRefreshing = false;
+          return false;
         }
+      } else {
+        print('Gagal refresh token: ${response.statusCode}, ${response.body}');
+        _isRefreshing = false;
+        return false;
       }
-
-      print('Gagal refresh token: ${response.body}');
-      return false;
     } catch (e) {
       print('Exception saat refresh token: $e');
+      _isRefreshing = false;
       return false;
     }
   }
 
-  // Method untuk menyimpan data user setelah login berhasil
   Future<void> saveUserData(Map<String, dynamic> data) async {
-    // Kode saveUserData yang sudah ada...
+    try {
+      await secureStorage.write(key: 'user_name', value: data['name']);
+      await secureStorage.write(key: 'user_id', value: data['id'].toString());
+      print('Data user berhasil disimpan');
+    } catch (e) {
+      print('Error saat menyimpan data user: $e');
+    }
   }
 
-  // Method untuk logout
   Future<bool> logout() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString('token');
-
-      if (token != null) {
-        // Panggil endpoint logout jika ada
-        try {
-          await http.post(
-            Uri.parse('$baseUrl/logout'),
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Accept': 'application/json',
-            },
-          );
-        } catch (e) {
-          print('Error saat logout dari server: $e');
-          // Lanjutkan proses logout lokal meskipun ada error
-        }
-      }
-
-      // Hapus data dari SharedPreferences
-      await prefs.clear();
-
+      await secureStorage.delete(key: 'token');
+      await secureStorage.delete(key: 'refresh_token');
+      await secureStorage.delete(key: 'user_name');
+      await secureStorage.delete(key: 'user_id');
+      print('Logout berhasil');
       return true;
     } catch (e) {
       print('Error saat logout: $e');
