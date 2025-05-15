@@ -1,6 +1,6 @@
 class Slug {
   final int id;
-  final String judul;
+  final String title;
   final String? deskripsi;
   final int jadwalId;
   final DateTime? createdAt;
@@ -8,7 +8,7 @@ class Slug {
 
   Slug({
     required this.id,
-    required this.judul,
+    required this.title,
     this.deskripsi,
     required this.jadwalId,
     this.createdAt,
@@ -18,7 +18,7 @@ class Slug {
   factory Slug.fromJson(Map<String, dynamic> json) {
     return Slug(
       id: json['id'],
-      judul: json['judul'],
+      title: json['title'],
       deskripsi: json['deskripsi'],
       jadwalId: json['jadwal_id'],
       createdAt: json['created_at'] != null
@@ -33,7 +33,7 @@ class Slug {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'judul': judul,
+      'title': title,
       'deskripsi': deskripsi,
       'jadwal_id': jadwalId,
       'created_at': createdAt?.toIso8601String(),

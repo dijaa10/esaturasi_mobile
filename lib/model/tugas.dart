@@ -27,7 +27,6 @@ class Tugas {
     required this.siswaId,
   });
 
-  // Base URL Laravel-mu
   static const String baseUrl = "http://10.0.2.2:8000";
 
   String? get imageUrl {
@@ -39,17 +38,14 @@ class Tugas {
 
   factory Tugas.fromJson(Map<String, dynamic> json) {
     final slug = json['slug'] as Map<String, dynamic>?;
+    final schedule = slug?['schedule'] as Map<String, dynamic>?;
 
-    final jadwal = slug?['jadwal'] as Map<String, dynamic>?;
+    final teacher = schedule?['teacher'] as Map<String, dynamic>?;
+    final guruValue = teacher?['name']?.toString() ?? 'Tidak ada nama';
 
-    final guru = jadwal?['guru'] as Map<String, dynamic>?;
-    final guruValue = guru?['nama']?.toString() ?? 'Tidak ada nama';
+    final subject = schedule?['subject'] as Map<String, dynamic>?;
+    final mapelValue = subject?['name']?.toString() ?? 'Tidak ada nama mapel';
 
-    final mapel = jadwal?['mata_pelajaran'] as Map<String, dynamic>?;
-    final mapelValue =
-        mapel?['nama_mapel']?.toString() ?? 'Tidak ada nama mapel';
-
-    // Ambil file path
     String? fotoPathValue;
     int attachmentsCount = 0;
 
@@ -69,8 +65,8 @@ class Tugas {
 
     return Tugas(
       id: json['id'],
-      judul: json['judul'] ?? '',
-      deskripsi: json['deskripsi'] ?? '',
+      judul: json['title'] ?? '',
+      deskripsi: json['description'] ?? '',
       guru: guruValue,
       deadline: json['deadline'] ?? '',
       status: json['status'] ?? 'Belum dikumpulkan',

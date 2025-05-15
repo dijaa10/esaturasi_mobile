@@ -87,7 +87,7 @@ class _MateriPageState extends State<MateriPage>
       setState(() {
         filteredSlugs = slugs
             .where((slug) =>
-                slug.judul.toLowerCase().contains(query.toLowerCase()))
+                slug.title.toLowerCase().contains(query.toLowerCase()))
             .toList();
       });
     }
@@ -569,7 +569,7 @@ class _MateriPageState extends State<MateriPage>
 
   Widget _buildBabCard(Slug slug, int index) {
     // Generate a consistent color based on the slug title
-    final int hashCode = slug.judul.hashCode;
+    final int hashCode = slug.title.hashCode;
     final List<List<Color>> colorPairs = [
       [Color(0xFF5D8CAE), Color(0xFF87BFFF)], // Blue shades
       [Color(0xFF048A81), Color(0xFF06D6A0)], // Teal shades
@@ -644,7 +644,7 @@ class _MateriPageState extends State<MateriPage>
                       ),
                       SizedBox(height: 4),
                       Text(
-                        slug.judul,
+                        slug.title,
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -752,7 +752,7 @@ class _MateriPageState extends State<MateriPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          slug.judul,
+                          slug.title,
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
