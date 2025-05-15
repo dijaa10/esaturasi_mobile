@@ -4,22 +4,32 @@ import 'package:flutter/foundation.dart';
 class Jadwal {
   final int id;
   final String mataPelajaran;
-  final String hari;
   final String kelas;
-  final String jamMulai;
-  final String jamSelesai;
   final String guru;
   final int idMapel;
+
+  // Data multi-hari dalam format Map
+  final Map<String, dynamic> hariData; // Menyimpan semua data hari
+  final Map<String, String> jamMulaiData; // Menyimpan jam mulai per hari
+  final Map<String, String> jamSelesaiData; // Menyimpan jam selesai per hari
+
+  // Properti untuk tampilan saat ini (untuk satu hari tertentu)
+  String hari;
+  String jamMulai;
+  String jamSelesai;
 
   Jadwal({
     required this.id,
     required this.mataPelajaran,
-    required this.hari,
     required this.kelas,
-    required this.jamMulai,
-    required this.jamSelesai,
     required this.guru,
     required this.idMapel,
+    required this.hariData,
+    required this.jamMulaiData,
+    required this.jamSelesaiData,
+    required this.hari,
+    required this.jamMulai,
+    required this.jamSelesai,
   });
 
   factory Jadwal.fromJson(Map<String, dynamic> json) {
@@ -58,54 +68,133 @@ class Jadwal {
       guruValue = 'Tidak ada guru';
     }
 
-    // Ambil hari
-    String hariValue = '';
+    // Parse data hari
+    List<String> hariList = [];
+    Map<String, dynamic> hariData = {};
+
     try {
-      // Pastikan "hari" adalah string yang valid, lalu decode JSON
       if (json['hari'] is String) {
-        List<dynamic> hariList = jsonDecode(json['hari']);
-        // Pastikan hariList tidak kosong
-        if (hariList.isNotEmpty && hariList[0] is String) {
-          hariValue = hariList[0].toString();
+        try {
+          // Coba parse sebagai array JSON
+          var decodedHari = jsonDecode(json['hari']);
+          if (decodedHari is List) {
+            hariList = List<String>.from(decodedHari.map((e) => e.toString()));
+
+            // Membuat Map untuk data hari
+            for (var hari in hariList) {
+              hariData[hari] = true;
+            }
+          } else if (decodedHari is Map) {
+            // Jika datanya dalam format Map
+            hariData = Map<String, dynamic>.from(decodedHari);
+            hariList = hariData.keys.toList();
+          }
+        } catch (e) {
+          // Jika bukan JSON valid, anggap sebagai string hari tunggal
+          hariList = [json['hari']];
+          hariData[json['hari']] = true;
         }
       }
     } catch (e) {
       if (kDebugMode) {
         print("Error parsing hari: $e");
       }
-      hariValue = 'Format tidak valid';
+      hariList = ['Format tidak valid'];
+      hariData['Format tidak valid'] = true;
     }
 
-    // Ambil jam mulai dan jam selesai
-    String jamMulaiValue = '';
-    String jamSelesaiValue = '';
+    // Parse data jam mulai
+    Map<String, String> jamMulaiData = {};
     try {
-      // Decode string JSON untuk jam mulai dan jam selesai
-      if (json['jam_mulai'] is String && json['jam_selesai'] is String) {
-        Map<String, dynamic> jamMulaiMap = jsonDecode(json['jam_mulai']);
-        Map<String, dynamic> jamSelesaiMap = jsonDecode(json['jam_selesai']);
-
-        // Ambil data jam berdasarkan hari yang sudah didapatkan
-        if (hariValue.isNotEmpty) {
-          jamMulaiValue = jamMulaiMap[hariValue] ?? '';
-          jamSelesaiValue = jamSelesaiMap[hariValue] ?? '';
+      if (json['jam_mulai'] is String) {
+        try {
+          var decodedJamMulai = jsonDecode(json['jam_mulai']);
+          if (decodedJamMulai is Map) {
+            jamMulaiData = Map<String, String>.from(decodedJamMulai
+                .map((key, value) => MapEntry(key, value.toString())));
+          }
+        } catch (e) {
+          // Jika bukan JSON valid, gunakan nilai mentah untuk semua hari
+          for (var hari in hariList) {
+            jamMulaiData[hari] = json['jam_mulai'] ?? '';
+          }
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print("Error parsing waktu: $e");
+        print("Error parsing jam mulai: $e");
       }
     }
 
+    // Parse data jam selesai
+    Map<String, String> jamSelesaiData = {};
+    try {
+      if (json['jam_selesai'] is String) {
+        try {
+          var decodedJamSelesai = jsonDecode(json['jam_selesai']);
+          if (decodedJamSelesai is Map) {
+            jamSelesaiData = Map<String, String>.from(decodedJamSelesai
+                .map((key, value) => MapEntry(key, value.toString())));
+          }
+        } catch (e) {
+          // Jika bukan JSON valid, gunakan nilai mentah untuk semua hari
+          for (var hari in hariList) {
+            jamSelesaiData[hari] = json['jam_selesai'] ?? '';
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error parsing jam selesai: $e");
+      }
+    }
+
+    // Default untuk tampilan awal - gunakan hari pertama jika ada
+    String hariDefault = hariList.isNotEmpty ? hariList[0] : 'Tidak ada';
+    String jamMulaiDefault = jamMulaiData[hariDefault] ?? '';
+    String jamSelesaiDefault = jamSelesaiData[hariDefault] ?? '';
+
     return Jadwal(
-      id: json['id'],
+      id: json['id'] ?? 0,
       mataPelajaran: mataPelajaranValue,
-      hari: hariValue, // Hanya nama hari saja
       kelas: kelasValue,
-      jamMulai: jamMulaiValue,
-      jamSelesai: jamSelesaiValue,
       guru: guruValue,
-      idMapel: json['mata_pelajaran_id'],
+      idMapel: json['mata_pelajaran_id'] ?? 0,
+      hariData: hariData,
+      jamMulaiData: jamMulaiData,
+      jamSelesaiData: jamSelesaiData,
+      hari: hariDefault,
+      jamMulai: jamMulaiDefault,
+      jamSelesai: jamSelesaiDefault,
     );
+  }
+
+  // Membuat daftar jadwal terpisah untuk setiap hari
+  List<Jadwal> expandToMultiDay() {
+    List<Jadwal> jadwalList = [];
+
+    // Pastikan hariData tidak kosong
+    if (hariData.isEmpty) {
+      return [this]; // Kembalikan jadwal asli jika tidak ada data multi-hari
+    }
+
+    // Buat satu objek Jadwal untuk setiap hari
+    for (var hari in hariData.keys) {
+      jadwalList.add(Jadwal(
+        id: this.id,
+        mataPelajaran: this.mataPelajaran,
+        kelas: this.kelas,
+        guru: this.guru,
+        idMapel: this.idMapel,
+        hariData: this.hariData,
+        jamMulaiData: this.jamMulaiData,
+        jamSelesaiData: this.jamSelesaiData,
+        hari: hari,
+        jamMulai: jamMulaiData[hari] ?? '',
+        jamSelesai: jamSelesaiData[hari] ?? '',
+      ));
+    }
+
+    return jadwalList;
   }
 }

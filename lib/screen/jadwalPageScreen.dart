@@ -3,7 +3,8 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../model/jadwal.dart';
-import 'dart:convert'; // Import untuk decode JSON
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'materipage.dart';
 
 class MapelPage extends StatefulWidget {
@@ -14,6 +15,8 @@ class MapelPage extends StatefulWidget {
 class _MapelPageState extends State<MapelPage> {
   // Data mata pelajaran yang diampuh
   List<Jadwal> mataPelajaran = [];
+  List<Jadwal> expandedMataPelajaran =
+      []; // Daftar yang sudah di-expand untuk multi-hari
   bool _isLoading = true;
   String _errorMessage = '';
   final String baseUrl = "http://10.0.2.2:8000/";
@@ -33,8 +36,7 @@ class _MapelPageState extends State<MapelPage> {
     try {
       // Ambil kelas_id dari SharedPreferences
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String kelasId = prefs.getString('kelas_id') ??
-          ''; // Ambil kelas_id yang sudah disimpan
+      String kelasId = prefs.getString('kelas_id') ?? '';
 
       if (kelasId.isEmpty) {
         setState(() {
@@ -48,26 +50,45 @@ class _MapelPageState extends State<MapelPage> {
           await http.get(Uri.parse("${baseUrl}api/jadwal/kelas/$kelasId"));
 
       // Log the raw response for debugging
-      print("Raw response: ${response.body}");
+      if (kDebugMode) {
+        print("Raw response: ${response.body}");
+      }
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
 
         // Log parsed data length
-        print("Parsed data length: ${data.length}");
-        if (data.isNotEmpty) {
-          print("First item sample: ${data[0]}");
+        if (kDebugMode) {
+          print("Parsed data length: ${data.length}");
+          if (data.isNotEmpty) {
+            print("First item sample: ${data[0]}");
+          }
+        }
+
+        // Parse data ke List<Jadwal>
+        List<Jadwal> parsedJadwal =
+            data.map((item) => Jadwal.fromJson(item)).toList();
+
+        // Expand jadwal multi-hari
+        List<Jadwal> expanded = [];
+        for (var jadwal in parsedJadwal) {
+          expanded.addAll(jadwal.expandToMultiDay());
         }
 
         setState(() {
-          mataPelajaran = data.map((item) => Jadwal.fromJson(item)).toList();
+          mataPelajaran = parsedJadwal; // Data asli
+          expandedMataPelajaran = expanded; // Data yang sudah diexpand
           _isLoading = false;
 
-          // Debug log of parsed objects
-          print("Converted to ${mataPelajaran.length} Jadwal objects");
-          if (mataPelajaran.isNotEmpty) {
+          // Debug log
+          if (kDebugMode) {
+            print("Converted to ${mataPelajaran.length} Jadwal objects");
             print(
-                "Sample jadwal: Mata Pelajaran=${mataPelajaran[0].mataPelajaran}, Hari=${mataPelajaran[0].hari}");
+                "Expanded to ${expandedMataPelajaran.length} Jadwal objects after multi-day processing");
+            if (expandedMataPelajaran.isNotEmpty) {
+              print(
+                  "Sample jadwal: Mata Pelajaran=${expandedMataPelajaran[0].mataPelajaran}, Hari=${expandedMataPelajaran[0].hari}");
+            }
           }
         });
       } else {
@@ -75,14 +96,18 @@ class _MapelPageState extends State<MapelPage> {
           _isLoading = false;
           _errorMessage = "Gagal mengambil data jadwal: ${response.statusCode}";
         });
-        print(_errorMessage);
+        if (kDebugMode) {
+          print(_errorMessage);
+        }
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
         _errorMessage = "Error fetching jadwal: $e";
       });
-      print(_errorMessage);
+      if (kDebugMode) {
+        print(_errorMessage);
+      }
     }
   }
 
@@ -118,23 +143,27 @@ class _MapelPageState extends State<MapelPage> {
   @override
   Widget build(BuildContext context) {
     // Debug filtering process
-    print("Current filter: $filterHari");
-    print("Total jadwal before filtering: ${mataPelajaran.length}");
+    if (kDebugMode) {
+      print("Current filter: $filterHari");
+      print("Total jadwal before filtering: ${expandedMataPelajaran.length}");
+    }
 
     // Filter mata pelajaran berdasarkan hari, ignoring case
     List<Jadwal> filteredMapel = filterHari == 'Semua'
-        ? mataPelajaran
-        : mataPelajaran
+        ? expandedMataPelajaran
+        : expandedMataPelajaran
             .where(
                 (mapel) => mapel.hari.toLowerCase() == filterHari.toLowerCase())
             .toList();
 
-    print("Filtered jadwal count: ${filteredMapel.length}");
+    if (kDebugMode) {
+      print("Filtered jadwal count: ${filteredMapel.length}");
+    }
 
     // Debug: Print all hari values to check for inconsistencies
-    if (mataPelajaran.isNotEmpty) {
+    if (expandedMataPelajaran.isNotEmpty && kDebugMode) {
       print(
-          "All hari values in data: ${mataPelajaran.map((m) => m.hari).toSet().toList()}");
+          "All hari values in data: ${expandedMataPelajaran.map((m) => m.hari).toSet().toList()}");
     }
 
     return Scaffold(
@@ -253,15 +282,14 @@ class _MapelPageState extends State<MapelPage> {
                               onPressed: _fetchJadwal,
                               child: Text('Coba Lagi'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    Color(0xFF1976D2), // Corrected from primary
+                                backgroundColor: Color(0xFF1976D2),
                               ),
                             ),
                           ],
                         ),
                       ),
                     )
-                  : mataPelajaran.isEmpty
+                  : expandedMataPelajaran.isEmpty
                       ? SliverFillRemaining(
                           child: Center(
                             child: Column(
@@ -312,8 +340,7 @@ class _MapelPageState extends State<MapelPage> {
                                       },
                                       child: Text('Lihat Semua Jadwal'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: Color(
-                                            0xFF1976D2), // Corrected from primary
+                                        backgroundColor: Color(0xFF1976D2),
                                       ),
                                     ),
                                   ],
