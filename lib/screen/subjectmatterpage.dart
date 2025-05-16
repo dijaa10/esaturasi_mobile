@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../model/schedule1.dart';
 import '../model/slug.dart';
-import 'detail_materi_page.dart';
+import 'detailsubjectmatterpage.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class MateriPage extends StatefulWidget {
