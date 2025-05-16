@@ -10,7 +10,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../model/announcement.dart';
 import 'announcementdetailpage.dart';
 import 'announcementpage.dart';
-import '../model/jadwal.dart';
+import '../model/schedule1.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -29,7 +29,7 @@ class HomePageState extends State<HomePage> {
   String greeting = "";
   bool isImageLoading = true;
   bool hasImageError = false;
-  List<Jadwal> semuaJadwal = [];
+  List<Schedule> jadwals = [];
   List<Map<String, dynamic>> _courses = [];
 
   final List<IconData> randomIcons = [
@@ -115,22 +115,32 @@ class HomePageState extends State<HomePage> {
   }
 
   String getHariIni() {
-    final hari = DateTime.now().weekday;
-    const namaHari = [
-      'Senin',
-      'Selasa',
-      'Rabu',
-      'Kamis',
-      'Jumat',
-      'Sabtu',
-      'Minggu'
-    ];
-    return namaHari[hari - 1];
+    try {
+      final now = DateTime.now();
+      const hariIndonesia = [
+        'Senin',
+        'Selasa',
+        'Rabu',
+        'Kamis',
+        'Jumat',
+        'Sabtu',
+        'Minggu'
+      ];
+
+      // DateTime.now().weekday produces values 1 (Monday) to 7 (Sunday)
+      // Subtract 1 to get index for our array (0-6)
+      final index = now.weekday - 1;
+      return hariIndonesia[index];
+    } catch (e) {
+      print("Error in getHariIni: $e");
+      return 'Senin'; // Default to Monday as a fallback
+    }
   }
 
+// 3. Fix the _fetchJadwal method
   Future<void> _fetchJadwal() async {
     final prefs = await SharedPreferences.getInstance();
-    final kelasId = prefs.getString('kelas_id');
+    final kelasId = prefs.getString('classroom_id');
 
     if (kelasId == null) {
       print("ID Kelas tidak ditemukan");
@@ -138,78 +148,156 @@ class HomePageState extends State<HomePage> {
     }
 
     try {
-      final response =
-          await http.get(Uri.parse("${baseUrl}api/jadwal/kelas/$kelasId"));
+      final response = await http
+          .get(Uri.parse("${baseUrl}api/schedule/classroom/$kelasId"));
 
       print("Status API Jadwal: ${response.statusCode}");
-      print("Response API: ${response.body}");
+      // Print just a short snippet of the response to avoid flooding logs
+      if (response.body.length > 300) {
+        print("Response API (snippet): ${response.body.substring(0, 300)}...");
+      } else {
+        print("Response API: ${response.body}");
+      }
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final List<Jadwal> jadwalList = (data['data'] as List)
-            .map((item) => Jadwal.fromJson(item))
-            .toList();
 
-        print("Jumlah jadwal diterima: ${jadwalList.length}");
+        // Print the structure of the response for debugging
+        print("Response structure: ${data.runtimeType}");
+        if (data is Map) {
+          print("Keys in response: ${data.keys.toList()}");
+        }
 
-        setState(() {
-          semuaJadwal = jadwalList;
-          _courses = getCoursesToday(jadwalList);
-        });
+        // Try to access data in different ways to accommodate API formats
+        var scheduleData;
+        if (data is List) {
+          // Case 1: Direct array
+          scheduleData = data;
+        } else if (data is Map &&
+            data.containsKey('data') &&
+            data['data'] is List) {
+          // Case 2: { "data": [...] }
+          scheduleData = data['data'];
+        } else {
+          // Fallback for other formats
+          print("Unexpected data format: $data");
+          setState(() {
+            jadwals = [];
+            _courses = [];
+          });
+          return;
+        }
+
+        print("Schedule data length: ${scheduleData.length}");
+
+        try {
+          final List<Schedule> jadwalList = (scheduleData as List)
+              .map((item) => Schedule.fromJson(item))
+              .toList();
+
+          print("Jumlah jadwal diterima: ${jadwalList.length}");
+
+          setState(() {
+            jadwals = jadwalList;
+            _courses = getCoursesToday(jadwalList);
+          });
+        } catch (e) {
+          print("Error parsing jadwal: $e");
+          setState(() {
+            jadwals = [];
+            _courses = [];
+          });
+        }
       } else {
         print("Gagal mengambil jadwal: ${response.statusCode}");
+        setState(() {
+          jadwals = [];
+          _courses = [];
+        });
       }
     } catch (e) {
       print("Error saat mengambil jadwal: $e");
+      setState(() {
+        jadwals = [];
+        _courses = [];
+      });
     }
   }
 
-  List<Map<String, dynamic>> getCoursesToday(List<Jadwal> jadwals) {
-    if (jadwals.isEmpty) {
-      print("Tidak ada jadwal yang tersedia sama sekali");
+// 4. Fix the getCoursesToday function
+  List<Map<String, dynamic>> getCoursesToday(List<Schedule> jadwals) {
+    try {
+      if (jadwals.isEmpty) {
+        print("Tidak ada jadwal yang tersedia sama sekali");
+        return [];
+      }
+
+      final hariIni = getHariIni();
+      print("Hari ini: $hariIni");
+
+      // Print all available schedules for debugging
+      print("Semua jadwal yang tersedia:");
+      for (var j in jadwals) {
+        print(
+            "- Hari: '${j.hari}' (${j.hari.runtimeType}), Pelajaran: ${j.subjectName}");
+      }
+
+      // Make sure to handle both String and potentially non-String day values
+      final filtered = jadwals.where((j) {
+        // Extra safety check
+        if (j.hari == null) return false;
+
+        // Case-insensitive comparison of days
+        return j.hari.toString().toLowerCase() == hariIni.toLowerCase();
+      }).toList();
+
+      print("Jumlah jadwal hari ini: ${filtered.length}");
+
+      if (filtered.isEmpty) {
+        print("Tidak ada jadwal untuk hari: $hariIni");
+        final uniqueDays = jadwals.map((j) => j.hari).toSet().toList();
+        print("Hari di database: $uniqueDays");
+      }
+
+      // Safely handle the icon list
+      List<IconData> iconList = [];
+      try {
+        iconList = icons;
+      } catch (e) {
+        print("Error accessing icons: $e");
+        iconList = [Icons.book]; // Fallback icon
+      }
+
+      return filtered.map((j) {
+        try {
+          return {
+            'title': j.subjectName,
+            'teacher': j.teacherName,
+            'timeStart': j.jamMulai,
+            'timeEnd': j.jamSelesai,
+            'color':
+                Colors.primaries[Random().nextInt(Colors.primaries.length)],
+            'icon': iconList.isNotEmpty
+                ? iconList[Random().nextInt(iconList.length)]
+                : Icons.book,
+          };
+        } catch (e) {
+          print("Error creating course item: $e");
+          // Return a default item if there's an error
+          return {
+            'title': j.subjectName,
+            'teacher': j.teacherName,
+            'timeStart': j.jamMulai,
+            'timeEnd': j.jamSelesai,
+            'color': Colors.blue,
+            'icon': Icons.book,
+          };
+        }
+      }).toList();
+    } catch (e) {
+      print("Error in getCoursesToday: $e");
       return [];
     }
-
-    // Dapatkan nama hari dalam bahasa Indonesia dari Intl
-    final todayIntl = DateFormat.EEEE('id_ID').format(DateTime.now());
-    print("Hari ini (Intl): $todayIntl");
-
-    // Dapatkan nama hari dengan cara manual - sebagai alternatif
-    final todayManual = getHariIni();
-    print("Hari ini (Manual): $todayManual");
-
-    // Debug: Tampilkan semua jadwal yang ada
-    print("Semua jadwal yang tersedia:");
-    jadwals.forEach((j) {
-      print("- ${j.hari}: ${j.mataPelajaran} (${j.guru})");
-    });
-
-    // Coba cari dengan beberapa cara berbeda
-    final filtered = jadwals
-        .where((j) =>
-            j.hari.toLowerCase() == todayIntl.toLowerCase() ||
-            j.hari.toLowerCase() == todayManual.toLowerCase())
-        .toList();
-
-    print("Jumlah jadwal hari ini: ${filtered.length}");
-
-    if (filtered.isEmpty) {
-      print("Tidak ada jadwal untuk hari: $todayIntl/$todayManual");
-
-      // Cek apakah mungkin ada masalah dengan format hari
-      print("Format hari di database vs aplikasi:");
-      final uniqueDays = jadwals.map((j) => j.hari).toSet().toList();
-      print("Hari di database: $uniqueDays");
-    }
-
-    return filtered.map((j) {
-      return {
-        'title': j.mataPelajaran,
-        'teacher': j.guru,
-        'color': Colors.primaries[Random().nextInt(Colors.primaries.length)],
-        'icon': icons[Random().nextInt(icons.length)],
-      };
-    }).toList();
   }
 
   final List<Map<String, dynamic>> _assignments = [
@@ -266,40 +354,118 @@ class HomePageState extends State<HomePage> {
     return Padding(
       padding: const EdgeInsets.only(right: 15.0),
       child: Container(
-        width: 200,
+        width: 220,
+        height: 180, // Menetapkan tinggi tetap untuk card
         decoration: BoxDecoration(
           color: course['color'].withOpacity(0.1),
           borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 2,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(15),
+          padding: const EdgeInsets.all(12), // Mengurangi padding keseluruhan
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                course['icon'],
-                color: course['color'],
-                size: 35,
+              // Subject icon and clock icon
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Icon(
+                    course['icon'],
+                    color: course['color'],
+                    size: 28, // Mengurangi ukuran ikon
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(3), // Mengurangi padding
+                    decoration: BoxDecoration(
+                      color: course['color'].withOpacity(0.8),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.access_time_rounded,
+                      color: Colors.white,
+                      size: 14, // Mengurangi ukuran ikon
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 15),
+              const SizedBox(height: 8), // Mengurangi jarak
+
+              // Subject name
               Text(
                 course['title'],
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 18,
+                  fontSize: 14, // Mengurangi ukuran font lebih lanjut
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 5),
-              Text(
-                course['teacher'],
-                style: TextStyle(
-                  color: Colors.black.withOpacity(0.7),
-                  fontSize: 14,
+              const SizedBox(height: 4), // Mengurangi jarak
+
+              // Teacher name
+              Row(
+                children: [
+                  Icon(
+                    Icons.person,
+                    size: 12, // Mengurangi ukuran ikon
+                    color: Colors.black.withOpacity(0.6),
+                  ),
+                  const SizedBox(width: 3), // Mengurangi jarak
+                  Expanded(
+                    child: Text(
+                      course['teacher'],
+                      style: TextStyle(
+                        color: Colors.black.withOpacity(0.7),
+                        fontSize: 11, // Mengurangi ukuran font lebih lanjut
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+
+              const Spacer(), // Menggunakan Spacer untuk mendorong waktu ke bawah
+
+              // Simplified time display
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: course['color'].withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Menggunakan ikon jam biasa yang pasti tersedia
+                    Icon(
+                      Icons.access_time,
+                      size: 14,
+                      color: course['color'],
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        "${course['timeStart']} - ${course['timeEnd']}",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: course['color'],
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -479,16 +645,6 @@ class HomePageState extends State<HomePage> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          // Navigasi ke halaman semua jadwal
-                        },
-                        icon: const Icon(Icons.arrow_forward),
-                        label: const Text('Lihat Semua'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF1976D2),
                         ),
                       ),
                     ],

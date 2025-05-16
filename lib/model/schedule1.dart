@@ -149,34 +149,34 @@ class Schedule {
     String jamMulaiDefault = '';
     String jamSelesaiDefault = '';
 
+// Ambil dari field utama jika tersedia
     if (scheduleData.containsKey('start')) {
-      jamMulaiDefault = scheduleData['start'];
+      jamMulaiDefault = scheduleData['start']?.toString() ?? '';
     } else if (scheduleData.containsKey(hariDefault) &&
         scheduleData[hariDefault] is Map &&
-        scheduleData[hariDefault].containsKey('start')) {
-      jamMulaiDefault = scheduleData[hariDefault]['start'];
+        scheduleData[hariDefault]['start'] != null) {
+      jamMulaiDefault = scheduleData[hariDefault]['start'].toString();
     }
 
     if (scheduleData.containsKey('end')) {
-      jamSelesaiDefault = scheduleData['end'];
+      jamSelesaiDefault = scheduleData['end']?.toString() ?? '';
     } else if (scheduleData.containsKey(hariDefault) &&
         scheduleData[hariDefault] is Map &&
-        scheduleData[hariDefault].containsKey('end')) {
-      jamSelesaiDefault = scheduleData[hariDefault]['end'];
+        scheduleData[hariDefault]['end'] != null) {
+      jamSelesaiDefault = scheduleData[hariDefault]['end'].toString();
     }
 
-    // Contoh JSON jadwal format dari gambar: {"day": "Senin", "end": "10:00", "start": "07:00"}
-    // Kita ambil nilai default dari format ini juga
+// Jika schedule kosong dan format json['schedule'] berupa string JSON
     if (scheduleData.isEmpty && json['schedule'] is String) {
       try {
         var schedule = jsonDecode(json['schedule']);
         if (schedule is Map) {
-          hariDefault = schedule['day'] ?? 'Tidak ada';
-          jamMulaiDefault = schedule['start'] ?? '';
-          jamSelesaiDefault = schedule['end'] ?? '';
+          hariDefault = schedule['day']?.toString() ?? 'Tidak ada';
+          jamMulaiDefault = schedule['start']?.toString() ?? '';
+          jamSelesaiDefault = schedule['end']?.toString() ?? '';
         }
       } catch (e) {
-        // Biarkan nilai default yang sudah diset
+        // Bisa log error jika perlu
       }
     }
 
