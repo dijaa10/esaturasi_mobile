@@ -28,8 +28,8 @@ class Pengumuman {
 
     return Pengumuman(
       id: json['id'] ?? 0,
-      title: json['title'] ?? 'Tanpa Judul',
-      content: json['content'] ?? '-',
+      title: json['judul_pengumuman'] ?? 'Tanpa Judul',
+      content: json['content_pengumuman'] ?? '-',
       date: tanggal,
     );
   }

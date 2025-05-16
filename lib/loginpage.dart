@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:esaturasi/screen/elearninghomepage_scren.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -78,10 +79,16 @@ class _LoginPageState extends State<LoginPage>
   }
 
   Future<void> saveUserData(Map<String, dynamic> data) async {
+    final token = data['token'];
+    final storage = FlutterSecureStorage();
+
+    // Simpan token dengan FlutterSecureStorage (lebih aman)
+    await storage.write(key: 'token', value: token);
+
     final prefs = await SharedPreferences.getInstance();
 
     // Simpan token
-    final token = data['token'];
+
     if (token != null) {
       await prefs.setString('token', token);
       print('Token disimpan: $token');
@@ -92,6 +99,8 @@ class _LoginPageState extends State<LoginPage>
     // Data siswa
     final student = data['student'];
     if (student != null) {
+      // Simpan data siswa di SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
       await prefs.setString('student_id', student['id'].toString());
       await prefs.setString('nisn', student['nisn'] ?? '');
       await prefs.setString('name', student['name'] ?? '');
@@ -99,14 +108,13 @@ class _LoginPageState extends State<LoginPage>
       await prefs.setString('avatar_url',
           student['avatar_url'] ?? 'https://via.placeholder.com/150');
       await prefs.setString('classroom_id', student['classroom_id'].toString());
+      // Tandai user sebagai login
+      await prefs.setBool('isLoggedIn', true);
 
       print('Data siswa berhasil disimpan.');
     } else {
       print('Data siswa tidak ditemukan dalam respons.');
     }
-
-    // Tandai user sebagai login
-    await prefs.setBool('isLoggedIn', true);
   }
 
   void showSuccessDialog() {

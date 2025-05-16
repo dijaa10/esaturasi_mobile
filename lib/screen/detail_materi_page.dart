@@ -91,7 +91,7 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
           _isLoading = false;
 
           // Set app bar title to slug name if available
-          _selectedMaterialName = widget.slug.judul ?? "Material Files";
+          _selectedMaterialName = widget.slug.title ?? "Material Files";
         });
       } else {
         setState(() {
