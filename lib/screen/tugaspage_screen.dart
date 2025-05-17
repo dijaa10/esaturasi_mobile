@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../model/tugas.dart';
 import 'dart:convert';
-import 'detailtugas_screen.dart'; // Pastikan untuk mengimpor halaman DetailTugasPage
+import 'detailtugas_screen.dart';
 
 class TugasSiswaPage extends StatefulWidget {
   @override
@@ -24,6 +24,7 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   String fotoProfil = "";
   String currentTab = 'Semua';
   final String baseUrl = "http://10.0.2.2:8000/";
+  bool _isLoading = true;
 
   final Map<String, Color> _subjectColors = {};
   final List<Color> _availableColors = [
@@ -42,31 +43,41 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
     super.initState();
     _loadUserData();
     _tabController = TabController(length: 2, vsync: this);
+
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          currentTab = _tabController.index == 0 ? 'Semua' : 'Selesai';
+        });
+        _filterTasks();
+      }
+    });
+
     fetchTasks();
   }
 
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      nama = prefs.getString('nama') ?? "Nama Tidak Ditemukan";
-      String fotoPath = prefs.getString('foto_profil') ?? "";
+      nama = prefs.getString('name') ?? "Nama Tidak Ditemukan";
+      String fotoPath = prefs.getString('avatar_url') ?? "";
       fotoProfil = fotoPath.isNotEmpty
           ? "${baseUrl}storage/$fotoPath"
           : "https://via.placeholder.com/150";
     });
 
-    String? idKelas = prefs.getString('kelas_id');
-    if (idKelas != null) _fetchKelas(idKelas);
+    String? classroomId = prefs.getString('classroom_id');
+    if (classroomId != null) _fetchKelas(classroomId);
   }
 
-  Future<void> _fetchKelas(String idKelas) async {
+  Future<void> _fetchKelas(String classroomId) async {
     try {
       final response =
-          await http.get(Uri.parse("${baseUrl}api/get-kelas/$idKelas"));
+          await http.get(Uri.parse("${baseUrl}api/get-class/$classroomId"));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
-          namaKelas = data['nama_kelas'] ?? "Kelas Tidak Ditemukan";
+          namaKelas = data['name'] ?? "Kelas Tidak Ditemukan";
         });
       }
     } catch (e) {
@@ -77,16 +88,35 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   }
 
   Future<void> fetchTasks() async {
-    final response = await http.get(Uri.parse('${baseUrl}api/tugas'));
-    if (response.statusCode == 200) {
-      List jsonResponse = json.decode(response.body);
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await http.get(Uri.parse('${baseUrl}api/tugas'));
+      if (response.statusCode == 200) {
+        List jsonResponse = json.decode(response.body);
+        setState(() {
+          tasks = jsonResponse.map((task) => Tugas.fromJson(task)).toList();
+          _filterTasks();
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text('Gagal memuat tugas: Error ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
       setState(() {
-        tasks = jsonResponse.map((task) => Tugas.fromJson(task)).toList();
-        filteredTasks = List.from(tasks);
+        _isLoading = false;
       });
-    } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat tugas, coba lagi nanti')),
+        SnackBar(content: Text('Gagal memuat tugas: ${e.toString()}')),
       );
     }
   }
@@ -94,15 +124,19 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   void _filterTasks() {
     setState(() {
       filteredTasks = tasks.where((task) {
+        // Filter berdasarkan pencarian
         final mapel = task.mataPelajaran ?? '';
-        return mapel.toLowerCase().contains(_searchQuery.toLowerCase());
-      }).toList();
+        final judul = task.judul ?? '';
+        final searchMatch =
+            mapel.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                judul.toLowerCase().contains(_searchQuery.toLowerCase());
 
-      if (currentTab == 'Selesai') {
-        filteredTasks = filteredTasks
-            .where((task) => task.status == 'Sudah Dikumpulkan')
-            .toList();
-      }
+        // Filter berdasarkan tab yang aktif
+        final statusMatch = currentTab == 'Semua' ||
+            (currentTab == 'Selesai' && task.status == 'Sudah Dikumpulkan');
+
+        return searchMatch && statusMatch;
+      }).toList();
     });
   }
 
@@ -149,26 +183,75 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
         children: [
           _buildTabBar(),
           Expanded(
-            child: filteredTasks.isEmpty
+            child: _isLoading
                 ? Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    padding: EdgeInsets.all(16),
-                    itemCount: filteredTasks.length,
-                    itemBuilder: (context, index) {
-                      final task = filteredTasks[index];
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DetailTugasPage(task: task),
+                : filteredTasks.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              currentTab == 'Semua'
+                                  ? Icons.assignment_late
+                                  : Icons.check_circle_outline,
+                              size: 80,
+                              color: Colors.grey[400],
                             ),
-                          );
-                        },
-                        child: buildTaskCard(task),
-                      );
-                    },
-                  ),
+                            SizedBox(height: 16),
+                            Text(
+                              currentTab == 'Semua'
+                                  ? _searchQuery.isNotEmpty
+                                      ? 'Tidak ada tugas yang sesuai pencarian'
+                                      : 'Belum ada tugas'
+                                  : 'Belum ada tugas yang selesai',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: fetchTasks,
+                        child: ListView.builder(
+                          padding: EdgeInsets.all(16),
+                          itemCount: filteredTasks.length,
+                          itemBuilder: (context, index) {
+                            final task = filteredTasks[index];
+                            return GestureDetector(
+                              onTap: () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        DetailTugasPage(task: task),
+                                  ),
+                                );
+
+                                // Jika kembali dengan result true (tugas telah di-submit)
+                                if (result == true) {
+                                  await fetchTasks(); // Refresh data tugas
+
+                                  // Animasikan ke tab "Selesai"
+                                  _tabController.animateTo(1);
+
+                                  // Tampilkan snackbar konfirmasi
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content:
+                                          Text('Tugas berhasil dikumpulkan'),
+                                      backgroundColor: Colors.green,
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: buildTaskCard(task),
+                            );
+                          },
+                        ),
+                      ),
           ),
         ],
       ),
@@ -210,7 +293,6 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
           icon: Icon(Icons.clear),
           onPressed: () {
             setState(() {
-              _isSearching = false;
               _searchQuery = '';
               _searchController.clear();
               _filterTasks();
@@ -253,6 +335,9 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                                   width: 60,
                                   height: 60,
                                   fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Icon(Icons.person,
+                                          size: 60, color: Colors.grey),
                                 )
                               : Icon(Icons.person,
                                   size: 60, color: Colors.grey),
@@ -303,12 +388,6 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
         unselectedLabelColor: Colors.grey,
         indicatorColor: Color(0xFF1A237E),
         indicatorWeight: 3,
-        onTap: (index) {
-          setState(() {
-            currentTab = index == 0 ? 'Semua' : 'Selesai';
-          });
-          _filterTasks();
-        },
         tabs: [
           Tab(icon: Icon(Icons.assignment), text: 'Semua'),
           Tab(icon: Icon(Icons.check_circle), text: 'Selesai'),
@@ -318,95 +397,76 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   }
 
   Widget buildTaskCard(Tugas task) {
-    final Color subjectColor = _getSubjectColor(task.judul);
+    final bool isCompleted = task.status == 'Sudah Dikumpulkan';
+
     return Card(
-      margin: EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: subjectColor.withOpacity(0.1),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      margin: EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      elevation: 3,
+      child: Padding(
+        padding: EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Container(
+              width: 6,
+              height: 80,
+              decoration: BoxDecoration(
+                color: _getSubjectColor(task.mataPelajaran ?? ""),
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.assignment, color: subjectColor, size: 20),
-                SizedBox(width: 8),
-                Text(task.judul,
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    task.mataPelajaran ?? "Tidak diketahui",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    task.judul ?? "Judul kosong",
+                    style: TextStyle(fontSize: 16),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Deadline: ${_formatDeadline(task.deadline ?? "")}',
                     style: TextStyle(
-                        fontWeight: FontWeight.bold, color: subjectColor)),
-                Spacer(),
-                _buildStatusChip(task.status),
-              ],
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic),
+                  ),
+                  SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        isCompleted
+                            ? Icons.check_circle
+                            : Icons.assignment_late,
+                        size: 16,
+                        color: isCompleted ? Colors.green : Colors.red,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Status: ${task.status ?? "-"}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isCompleted ? Colors.green : Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(task.judul,
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                SizedBox(height: 8),
-                Text(task.deskripsi),
-                SizedBox(height: 16),
-                Row(
-                  children: [
-                    Icon(Icons.person, size: 16, color: Colors.grey),
-                    SizedBox(width: 4),
-                    Text(task.guru, style: TextStyle(color: Colors.grey)),
-                    Spacer(),
-                    Icon(Icons.attach_file, size: 16, color: Colors.grey),
-                    SizedBox(width: 4),
-                    Text('${task.attachments} lampiran',
-                        style: TextStyle(color: Colors.grey)),
-                  ],
-                ),
-                SizedBox(height: 16),
-                Row(
-                  children: [
-                    Icon(Icons.timer, size: 16, color: Colors.grey),
-                    SizedBox(width: 4),
-                    Text(_formatDeadline(task.deadline)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusChip(String status) {
-    Color chipColor;
-    switch (status) {
-      case 'Sudah Dikumpulkan':
-        chipColor = Colors.green;
-        break;
-      case 'Sedang Dikerjakan':
-        chipColor = Colors.orange;
-        break;
-      default:
-        chipColor = Colors.red;
-    }
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: chipColor.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          fontSize: 12,
-          color: chipColor,
-          fontWeight: FontWeight.bold,
+            Icon(
+              Icons.chevron_right,
+              color: Colors.grey,
+            )
+          ],
         ),
       ),
     );
