@@ -137,7 +137,6 @@ class HomePageState extends State<HomePage> {
     }
   }
 
-// 3. Fix the _fetchJadwal method
   Future<void> _fetchJadwal() async {
     final prefs = await SharedPreferences.getInstance();
     final kelasId = prefs.getString('classroom_id');
@@ -224,7 +223,6 @@ class HomePageState extends State<HomePage> {
     }
   }
 
-// 4. Fix the getCoursesToday function
   List<Map<String, dynamic>> getCoursesToday(List<Schedule> jadwals) {
     try {
       if (jadwals.isEmpty) {
@@ -235,15 +233,24 @@ class HomePageState extends State<HomePage> {
       final hariIni = getHariIni();
       print("Hari ini: $hariIni");
 
-      // Print all available schedules for debugging
+      // Print semua jadwal yang tersedia untuk debugging
       print("Semua jadwal yang tersedia:");
       for (var j in jadwals) {
         print(
-            "- Hari: '${j.hari}' (${j.hari.runtimeType}), Pelajaran: ${j.subjectName}");
+            "- Hari: '${j.hari}' (${j.hari.runtimeType}), Pelajaran: ${j.subjectName}, "
+            "Jam Mulai: '${j.jamMulai}', Jam Selesai: '${j.jamSelesai}'");
       }
 
-      // Make sure to handle both String and potentially non-String day values
-      final filtered = jadwals.where((j) {
+      // Expand jadwal multi-hari menjadi jadwal terpisah
+      List<Schedule> expandedJadwals = [];
+      for (var jadwal in jadwals) {
+        expandedJadwals.addAll(jadwal.expandToMultiDay());
+      }
+
+      print("Jumlah jadwal setelah expand: ${expandedJadwals.length}");
+
+      // Filter jadwal untuk hari ini
+      final filtered = expandedJadwals.where((j) {
         // Extra safety check
         if (j.hari == null) return false;
 
@@ -255,8 +262,14 @@ class HomePageState extends State<HomePage> {
 
       if (filtered.isEmpty) {
         print("Tidak ada jadwal untuk hari: $hariIni");
-        final uniqueDays = jadwals.map((j) => j.hari).toSet().toList();
+        final uniqueDays = expandedJadwals.map((j) => j.hari).toSet().toList();
         print("Hari di database: $uniqueDays");
+      }
+
+      // Debug informasi jadwal yang ditemukan untuk hari ini
+      for (var j in filtered) {
+        print("Jadwal hari ini: ${j.subjectName}, "
+            "Jam: ${j.jamMulai}-${j.jamSelesai}");
       }
 
       // Safely handle the icon list
@@ -273,8 +286,8 @@ class HomePageState extends State<HomePage> {
           return {
             'title': j.subjectName,
             'teacher': j.teacherName,
-            'timeStart': j.jamMulai,
-            'timeEnd': j.jamSelesai,
+            'timeStart': j.jamMulai.isNotEmpty ? j.jamMulai : "00:00",
+            'timeEnd': j.jamSelesai.isNotEmpty ? j.jamSelesai : "00:00",
             'color':
                 Colors.primaries[Random().nextInt(Colors.primaries.length)],
             'icon': iconList.isNotEmpty
@@ -286,9 +299,9 @@ class HomePageState extends State<HomePage> {
           // Return a default item if there's an error
           return {
             'title': j.subjectName,
-            'teacher': j.teacherName,
-            'timeStart': j.jamMulai,
-            'timeEnd': j.jamSelesai,
+            'teacher': j.teacherName ?? 'Tidak ada guru',
+            'timeStart': j.jamMulai.isNotEmpty ? j.jamMulai : "00:00",
+            'timeEnd': j.jamSelesai.isNotEmpty ? j.jamSelesai : "00:00",
             'color': Colors.blue,
             'icon': Icons.book,
           };

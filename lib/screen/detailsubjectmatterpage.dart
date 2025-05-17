@@ -1,3 +1,49 @@
+// Step 1: First, add the necessary dependencies to your pubspec.yaml
+// This is a partial example, add these to your existing dependencies
+
+// In pubspec.yaml:
+/*
+dependencies:
+  flutter:
+    sdk: flutter
+  path_provider: ^2.1.1
+  dio: ^5.3.2
+  http: ^1.1.0
+  url_launcher: ^6.1.14
+  flutter_pdfview: ^1.3.2
+  share_plus: ^7.1.0 # Add this for sharing files
+  path: ^1.8.3 # Add this for path manipulation
+*/
+
+// Step 2: Add FileProvider configuration to your Android manifest
+// In android/app/src/main/AndroidManifest.xml inside the <application> tag:
+/*
+<provider
+    android:name="androidx.core.content.FileProvider"
+    android:authorities="${applicationId}.fileprovider"
+    android:exported="false"
+    android:grantUriPermissions="true">
+    <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/file_paths" />
+</provider>
+*/
+
+// Step 3: Create the file_paths.xml resource file
+// In android/app/src/main/res/xml/file_paths.xml:
+/*
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <external-path name="external_files" path="."/>
+    <files-path name="files" path="."/>
+    <cache-path name="cache" path="."/>
+    <external-cache-path name="external_cache" path="."/>
+    <external-files-path name="external_files" path="."/>
+</paths>
+*/
+
+// Step 4: Update your DetailMateriPage class with the fixed code below
+
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -6,8 +52,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:dio/dio.dart';
+import 'package:path/path.dart' as path;
 import '../model/slug.dart';
 import '../model/subjectmatter.dart';
+import 'package:share_plus/share_plus.dart';
 
 class DetailMateriPage extends StatefulWidget {
   final Slug slug;
@@ -29,6 +77,8 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
   final String baseUrl = "http://10.0.2.2:8000";
   // Track selected material name for the app bar title
   String _selectedMaterialName = "";
+  // Flag to remember if PDF viewer had errors
+  bool _hasPDFOpenError = false;
 
   @override
   void initState() {
@@ -52,7 +102,7 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
       final int slugId = widget.slug.id;
       print("Fetching materials for slug ID: $slugId");
 
-      final uri = Uri.parse("${baseUrl}api/materials/slug/$slugId");
+      final uri = Uri.parse("${baseUrl}/api/materials/slug/$slugId");
       print("Request URL: $uri");
 
       // Add proper headers to request
@@ -224,9 +274,13 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
     // Extract file extension from file_path instead of title
     final String fileExtension = _getFileExtension(materi.filePath);
 
-    // Construct the correct file URL - the API already includes "storage/" in the path,
-    // so we just need to prepend the baseUrl
-    final String fileUrl = Uri.encodeFull("${baseUrl}${materi.filePath}");
+    // Construct the correct file URL
+    final String normalizedPath = materi.filePath.startsWith('storage/')
+        ? materi.filePath
+        : materi.filePath;
+
+    final String fileUrl = Uri.encodeFull("$baseUrl/storage/$normalizedPath");
+
     print("Opening file URL: $fileUrl");
 
     setState(() {
@@ -255,7 +309,12 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
 
             // Check if the downloaded file exists and has content
             if (await localFile.exists() && await localFile.length() > 0) {
-              _openPdf(localFile.path, materi.title);
+              // Validate PDF file format
+              if (await _validatePDFFile(localFile)) {
+                _openPdf(localFile.path, materi.title);
+              } else {
+                throw Exception("Downloaded file is not a valid PDF");
+              }
             } else {
               throw Exception("PDF file is empty or corrupt");
             }
@@ -274,6 +333,8 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         case 'pptx':
         case 'xls':
         case 'xlsx':
+        case 'mp4':
+        case 'mp3':
           try {
             // For Office documents, also download locally first
             final localFile = await _downloadFile(
@@ -283,7 +344,7 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
             });
 
             if (await localFile.exists() && await localFile.length() > 0) {
-              _openFileWithExternalApp('file://${localFile.path}');
+              await _openWithCompatibleApp(localFile);
             } else {
               throw Exception("Document file is empty or corrupt");
             }
@@ -306,7 +367,7 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
             });
 
             if (await localFile.exists()) {
-              _openFileWithExternalApp('file://${localFile.path}');
+              await _openWithCompatibleApp(localFile);
             } else {
               throw Exception("File could not be downloaded");
             }
@@ -328,10 +389,25 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
     }
   }
 
+  // Validate the PDF file header to ensure it's a valid PDF
+  Future<bool> _validatePDFFile(File file) async {
+    try {
+      // Read the first few bytes of the file to check its header
+      final RandomAccessFile raf = await file.open(mode: FileMode.read);
+      final List<int> header = await raf.read(5); // Read first 5 bytes
+      await raf.close();
+
+      // Check if header matches the PDF signature (%PDF-)
+      return String.fromCharCodes(header) == '%PDF-';
+    } catch (e) {
+      print("Error validating PDF file: $e");
+      return false;
+    }
+  }
+
   Future<File> _downloadFile(String url, String fileName) async {
     try {
-      // Get the application documents directory instead of temporary directory
-      // This helps with file persistence issues
+      // Get the application documents directory
       final directory = await getApplicationDocumentsDirectory();
       final filePath = '${directory.path}/$fileName';
       final file = File(filePath);
@@ -363,7 +439,10 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         },
       );
 
-      // Add request/response interceptors for better debugging
+      // Clear previous interceptors to avoid duplication
+      _dio.interceptors.clear();
+
+      // Add logging interceptor for debugging
       _dio.interceptors.add(LogInterceptor(
         request: true,
         requestHeader: true,
@@ -371,22 +450,33 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         responseBody: false,
       ));
 
+      // Configure timeout settings
+      _dio.options.connectTimeout = 30000; // 30 seconds in milliseconds
+      _dio.options.receiveTimeout = 30000; // 30 seconds in milliseconds
+      _dio.options.sendTimeout = 30000; // 30 seconds in milliseconds
+
+      // Setup retry variables
       int retryCount = 0;
-      const int maxRetries = 5;
+      const int maxRetries = 3;
       bool downloadSuccess = false;
       Exception? lastException;
 
       // Implement exponential backoff for retries
       while (!downloadSuccess && retryCount < maxRetries) {
         try {
-          // Use proper headers to avoid server rejections
+          // Perform download with proper headers
           final response = await _dio.download(
             url,
             filePath,
             options: Options(
-              headers: {"Accept": "*/*", "User-Agent": "Flutter/1.0"},
+              headers: {
+                "Accept": "*/*",
+                "User-Agent": "Flutter/1.0",
+                "Connection": "keep-alive",
+              },
               followRedirects: true,
-              validateStatus: (status) => status! < 500,
+              validateStatus: (status) => status != null && status < 500,
+              receiveTimeout: 60000, // 60 seconds in milliseconds
             ),
             onReceiveProgress: (received, total) {
               if (total != -1) {
@@ -394,7 +484,7 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
                     "Download progress: ${(received / total * 100).toStringAsFixed(0)}%");
               }
             },
-            deleteOnError: true,
+            deleteOnError: false,
           );
 
           // Check response status code
@@ -450,6 +540,21 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
     }
   }
 
+  // Use Share.shareFiles for safely sharing files with other apps
+  Future<void> _openWithCompatibleApp(File file) async {
+    try {
+      await Share.shareFiles(
+        [file.path],
+        sharePositionOrigin: Rect.fromLTWH(0, 0, 10, 10),
+      );
+      print("File shared successfully.");
+    } catch (e) {
+      print("Error sharing file: $e");
+      _showErrorDialog(
+          "File Sharing Error", "Could not open the file with other apps: $e");
+    }
+  }
+
   void _openPdf(String filePath, String fileName) {
     try {
       // Verify the file exists and has content before attempting to open it
@@ -466,6 +571,12 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         return;
       }
 
+      // Check if previous attempts to use PDFView failed
+      if (_hasPDFOpenError) {
+        _openWithCompatibleApp(pdfFile);
+        return;
+      }
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -474,7 +585,17 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
               title: Text(fileName),
               backgroundColor: const Color(0xFF1976D2),
               elevation: 0,
-              // Share button removed as requested
+              actions: [
+                // Add option to open with external app
+                IconButton(
+                  icon: const Icon(Icons.share),
+                  tooltip: 'Share file',
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _openWithCompatibleApp(pdfFile);
+                  },
+                ),
+              ],
             ),
             body: PDFView(
               filePath: filePath,
@@ -489,8 +610,17 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
               onError: (error) {
                 print("Error loading PDF: $error");
                 Navigator.pop(context); // Go back if PDF fails to load
+
+                // Flag to remember that PDFView had an error to use external app directly next time
+                setState(() {
+                  _hasPDFOpenError = true;
+                });
+
                 _showErrorDialog(
                     "PDF Error", "Could not load the PDF file: $error");
+
+                // Try to open with external app
+                _openWithCompatibleApp(pdfFile);
               },
               onPageError: (page, error) {
                 print("Error on page $page: $error");
@@ -502,35 +632,9 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
     } catch (e) {
       print("Exception when opening PDF: $e");
       _showErrorDialog("Error Opening PDF", "An unexpected error occurred: $e");
-    }
-  }
 
-  Future<void> _openFileWithExternalApp(String url) async {
-    try {
-      final Uri uri = Uri.parse(url);
-
-      // First try with the newer API
-      if (await canLaunchUrl(uri)) {
-        final bool launched =
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-
-        if (!launched) {
-          throw Exception('Failed to launch URL');
-        }
-      }
-      // Fallback to the older API
-      else if (await canLaunch(url)) {
-        final bool launched = await launch(url);
-
-        if (!launched) {
-          throw Exception('Failed to launch URL');
-        }
-      } else {
-        throw Exception('No app found to open this file type');
-      }
-    } catch (e) {
-      print('Error launching URL: $e');
-      throw Exception('Could not open the file with any available app: $e');
+      // Try fallback to external app
+      _openWithCompatibleApp(File(filePath));
     }
   }
 
@@ -543,6 +647,24 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
             title: Text(fileName),
             backgroundColor: const Color(0xFF1976D2),
             elevation: 0,
+            actions: [
+              // Add option to open with external app
+              IconButton(
+                icon: const Icon(Icons.download),
+                tooltip: 'Download image',
+                onPressed: () async {
+                  Navigator.pop(context);
+                  // Download image and then open with compatible app
+                  try {
+                    final localFile = await _downloadFile(url, fileName);
+                    _openWithCompatibleApp(localFile);
+                  } catch (e) {
+                    _showErrorDialog(
+                        "Download Error", "Failed to download image: $e");
+                  }
+                },
+              ),
+            ],
           ),
           body: Center(
             child: InteractiveViewer(
@@ -565,6 +687,8 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
                   );
                 },
                 errorBuilder: (context, error, stackTrace) {
+                  print("Error loading image: $error");
+
                   return Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -581,6 +705,25 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
                         style: const TextStyle(color: Colors.red, fontSize: 12),
                         textAlign: TextAlign.center,
                       ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          // Try downloading the image directly
+                          try {
+                            final localFile =
+                                await _downloadFile(url, fileName);
+                            _openWithCompatibleApp(localFile);
+                          } catch (e) {
+                            _showErrorDialog("Download Error",
+                                "Failed to download image: $e");
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1976D2),
+                        ),
+                        child: const Text('Download Image'),
+                      ),
                     ],
                   );
                 },
@@ -588,33 +731,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  void _showUnsupportedFileTypeDialog(String fileType) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.amber[700]),
-            const SizedBox(width: 10),
-            const Text('Tipe File Tidak Didukung'),
-          ],
-        ),
-        content: Text(
-          'Maaf, format file .$fileType tidak dapat dibuka di aplikasi ini.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK', style: TextStyle(color: Color(0xFF1976D2))),
-          ),
-        ],
       ),
     );
   }
@@ -639,27 +755,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
             onPressed: () => Navigator.pop(context),
             child: const Text('OK', style: TextStyle(color: Color(0xFF1976D2))),
           ),
-          // Add a retry button for download errors
-          if (title.contains("Error Downloading"))
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // Retry with external app as fallback
-                final fileUrl = message.contains("http://")
-                    ? message
-                        .substring(message.indexOf("http://"),
-                            message.indexOf("http://") + 100)
-                        .split(" ")[0]
-                    : null;
-
-                if (fileUrl != null) {
-                  launchUrl(Uri.parse(fileUrl),
-                      mode: LaunchMode.externalApplication);
-                }
-              },
-              child: const Text('Open in Browser',
-                  style: TextStyle(color: Color(0xFF1976D2))),
-            ),
         ],
       ),
     );
@@ -670,7 +765,7 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        // Use the dynamic title instead of the static "Material Files"
+        // Use the dynamic title
         title: Text(
           _selectedMaterialName,
           style: const TextStyle(

@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../loginpage.dart';
+import 'changepasswordpage.dart'; // Import the new page
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -213,6 +214,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // Navigate to change password page
+  void _navigateToChangePassword() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => ChangePasswordPage()),
+    );
+  }
+
   // Image selection functions
   Future<void> _getImageFromGallery() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
@@ -294,7 +303,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-//ipload image
+//upload image
   Future<void> _uploadImage(File imageFile) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -702,6 +711,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     bgColor: Color(0xFFD1FAE5), // Light green
                   ),
                   SizedBox(height: 32),
+
+                  // Change Password Button
+                  Container(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _navigateToChangePassword,
+                      icon: Icon(Icons.lock_outlined),
+                      label: Text(
+                        "Ubah Password",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFFE0F2FE), // Light blue
+                        foregroundColor: primaryColor,
+                        elevation: 0,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 16),
+
+                  // Logout Button
                   Container(
                     width: double.infinity,
                     child: ElevatedButton.icon(

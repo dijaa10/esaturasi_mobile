@@ -80,58 +80,81 @@ class Schedule {
     List<Map<String, dynamic>> scheduleDays = [];
     List<String> hariList = [];
 
-    try {
-      if (json['schedule'] is String) {
-        try {
-          // Parse schedule column yang berisi data JSON
-          var scheduleValue = jsonDecode(json['schedule']);
+    // Default values for single day schedule
+    String hariDefault = 'Tidak ada';
+    String jamMulaiDefault = '';
+    String jamSelesaiDefault = '';
 
-          // Handle array format: [{day: "Senin", end: "10:00", start: "07:00"}, {...}]
-          if (scheduleValue is List) {
-            for (var daySchedule in scheduleValue) {
-              if (daySchedule is Map && daySchedule.containsKey('day')) {
-                scheduleDays.add(Map<String, dynamic>.from(daySchedule));
-                hariList.add(daySchedule['day']);
-              }
-            }
-            // Store the parsed schedule data
-            for (int i = 0; i < scheduleDays.length; i++) {
-              scheduleData['day${i + 1}'] = scheduleDays[i];
-            }
-          }
-          // Handle single day format: {day: "Senin", end: "10:00", start: "07:00"}
-          else if (scheduleValue is Map) {
-            scheduleData = Map<String, dynamic>.from(scheduleValue);
-            if (scheduleData.containsKey('day')) {
-              hariList.add(scheduleData['day']);
-            }
-          }
-        } catch (e) {
-          if (kDebugMode) {
-            print("Error parsing schedule data: $e");
-          }
-          scheduleData = {'error': 'Invalid schedule format'};
-        }
+    try {
+      // Direct access to start and end times if they exist at the top level
+      if (json.containsKey('start')) {
+        jamMulaiDefault = json['start']?.toString() ?? '';
       }
-      // If already decoded as Map
-      else if (json['schedule'] is Map) {
-        scheduleData = Map<String, dynamic>.from(json['schedule']);
-        if (scheduleData.containsKey('day')) {
-          hariList.add(scheduleData['day']);
-        }
+      if (json.containsKey('end')) {
+        jamSelesaiDefault = json['end']?.toString() ?? '';
       }
-      // If already decoded as List of Maps
-      else if (json['schedule'] is List) {
-        List scheduleList = json['schedule'] as List;
-        for (int i = 0; i < scheduleList.length; i++) {
-          var item = scheduleList[i];
-          if (item is Map) {
-            var dayData = Map<String, dynamic>.from(item);
-            if (dayData.containsKey('day')) {
+
+      // Handle the schedule field
+      if (json['schedule'] != null) {
+        var scheduleValue;
+
+        // Parse if string
+        if (json['schedule'] is String) {
+          try {
+            scheduleValue = jsonDecode(json['schedule']);
+          } catch (e) {
+            if (kDebugMode) {
+              print("Error parsing schedule JSON string: $e");
+            }
+            scheduleValue = null;
+          }
+        } else {
+          scheduleValue = json['schedule'];
+        }
+
+        // Process schedule data based on its type
+        if (scheduleValue is List && scheduleValue.isNotEmpty) {
+          // List format: [{day: "Senin", end: "10:00", start: "07:00"}, {...}]
+          for (var daySchedule in scheduleValue) {
+            if (daySchedule is Map && daySchedule.containsKey('day')) {
+              var dayData = Map<String, dynamic>.from(daySchedule);
               scheduleDays.add(dayData);
-              hariList.add(dayData['day']);
-              scheduleData['day${i + 1}'] = dayData;
+              hariList.add(daySchedule['day']?.toString() ?? '');
             }
+          }
+
+          // Save first day's times if we haven't found them yet
+          if (scheduleDays.isNotEmpty) {
+            hariDefault = hariList.isNotEmpty ? hariList[0] : 'Tidak ada';
+            jamMulaiDefault = jamMulaiDefault.isEmpty
+                ? scheduleDays[0]['start']?.toString() ?? ''
+                : jamMulaiDefault;
+            jamSelesaiDefault = jamSelesaiDefault.isEmpty
+                ? scheduleDays[0]['end']?.toString() ?? ''
+                : jamSelesaiDefault;
+          }
+
+          // Store all days in scheduleData
+          for (int i = 0; i < scheduleDays.length; i++) {
+            scheduleData['day${i + 1}'] = scheduleDays[i];
+          }
+        }
+        // Single day format: {day: "Senin", end: "10:00", start: "07:00"}
+        else if (scheduleValue is Map) {
+          scheduleData = Map<String, dynamic>.from(scheduleValue);
+
+          // Extract day and times
+          if (scheduleData.containsKey('day')) {
+            hariDefault = scheduleData['day']?.toString() ?? 'Tidak ada';
+            hariList.add(hariDefault);
+          }
+
+          // Update times if they exist in the schedule map
+          if (scheduleData.containsKey('start') && jamMulaiDefault.isEmpty) {
+            jamMulaiDefault = scheduleData['start']?.toString() ?? '';
+          }
+          if (scheduleData.containsKey('end') && jamSelesaiDefault.isEmpty) {
+            jamSelesaiDefault = scheduleData['end']?.toString() ?? '';
           }
         }
       }
@@ -142,42 +165,10 @@ class Schedule {
       scheduleData = {'error': 'Processing error'};
     }
 
-    // Default untuk tampilan awal - gunakan hari pertama jika ada
-    String hariDefault = hariList.isNotEmpty ? hariList[0] : 'Tidak ada';
-
-    // Extract jam mulai dan selesai dari schedule
-    String jamMulaiDefault = '';
-    String jamSelesaiDefault = '';
-
-// Ambil dari field utama jika tersedia
-    if (scheduleData.containsKey('start')) {
-      jamMulaiDefault = scheduleData['start']?.toString() ?? '';
-    } else if (scheduleData.containsKey(hariDefault) &&
-        scheduleData[hariDefault] is Map &&
-        scheduleData[hariDefault]['start'] != null) {
-      jamMulaiDefault = scheduleData[hariDefault]['start'].toString();
-    }
-
-    if (scheduleData.containsKey('end')) {
-      jamSelesaiDefault = scheduleData['end']?.toString() ?? '';
-    } else if (scheduleData.containsKey(hariDefault) &&
-        scheduleData[hariDefault] is Map &&
-        scheduleData[hariDefault]['end'] != null) {
-      jamSelesaiDefault = scheduleData[hariDefault]['end'].toString();
-    }
-
-// Jika schedule kosong dan format json['schedule'] berupa string JSON
-    if (scheduleData.isEmpty && json['schedule'] is String) {
-      try {
-        var schedule = jsonDecode(json['schedule']);
-        if (schedule is Map) {
-          hariDefault = schedule['day']?.toString() ?? 'Tidak ada';
-          jamMulaiDefault = schedule['start']?.toString() ?? '';
-          jamSelesaiDefault = schedule['end']?.toString() ?? '';
-        }
-      } catch (e) {
-        // Bisa log error jika perlu
-      }
+    // Debug output to verify the values
+    if (kDebugMode) {
+      print(
+          "Parsed values - Day: $hariDefault, Start: $jamMulaiDefault, End: $jamSelesaiDefault");
     }
 
     return Schedule(
@@ -197,7 +188,6 @@ class Schedule {
       jamSelesai: jamSelesaiDefault,
     );
   }
-
   // Membuat daftar jadwal terpisah untuk setiap hari
   List<Schedule> expandToMultiDay() {
     List<Schedule> scheduleList = [];
