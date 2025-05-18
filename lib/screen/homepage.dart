@@ -190,12 +190,38 @@ class HomePageState extends State<HomePage> {
           // Periksa apakah ada info debug
           if (data.containsKey('debug_info')) {
             print("🔍 INFO DEBUG SERVER: ${data['debug_info']}");
+
+            // Periksa submitted_tasks dari debug_info
+            if (data['debug_info'] is Map &&
+                data['debug_info'].containsKey('submitted_tasks')) {
+              final submittedTasksCount = data['debug_info']['submitted_tasks'];
+              print(
+                  "🔍 DEBUG: Jumlah tugas yang sudah di-submit: $submittedTasksCount");
+            }
           }
 
           setState(() {
             // Pastikan kita mendapatkan list yang valid
             if (taskData is List) {
-              _pendingTasks = List<Map<String, dynamic>>.from(taskData);
+              // Filter tugas - hapus ID debugging dan tugas yang sudah di-submit
+              _pendingTasks =
+                  List<Map<String, dynamic>>.from(taskData).where((task) {
+                // Jangan tampilkan tugas dengan ID 999999 (tugas debug)
+                if (task['id'] == 999999) {
+                  print("🔍 DEBUG: Skip tugas debugging dengan ID 999999");
+                  return false;
+                }
+
+                // Jika ada properti 'is_submitted', gunakan untuk filter
+                if (task.containsKey('is_submitted') &&
+                    task['is_submitted'] == true) {
+                  print(
+                      "🔍 DEBUG: Skip tugas dengan ID ${task['id']} karena sudah di-submit");
+                  return false;
+                }
+
+                return true;
+              }).toList();
             } else {
               print("⚠️ ERROR: Format 'tasks' bukan List");
               _pendingTasks = [];
@@ -1031,40 +1057,6 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildEmptyTasksMessage() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.assignment_turned_in,
-            size: 70,
-            color: Colors.grey[400],
-          ),
-          SizedBox(height: 20),
-          Text(
-            'Tidak ada tugas yang belum dikerjakan',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[700],
-            ),
-          ),
-          SizedBox(height: 10),
-          Text(
-            'Semua tugas sudah dikumpulkan. Selamat!',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-// Modifikasi bagian tampilan untuk menampilkan daftar tugas atau pesan kosong
   Widget _buildTasksSection() {
     if (_isTaskLoading) {
       return Center(
@@ -1085,6 +1077,7 @@ class HomePageState extends State<HomePage> {
       );
     }
 
+    // Karena tugas sudah difilter di _fetchPendingTasks, kita bisa langsung menggunakan _pendingTasks
     if (_pendingTasks.isEmpty) {
       return _buildEmptyTasksMessage();
     }
@@ -1096,6 +1089,39 @@ class HomePageState extends State<HomePage> {
       itemBuilder: (context, index) {
         return _buildAssignmentCard(_pendingTasks[index]);
       },
+    );
+  }
+
+// Pesan kosong ketika tidak ada tugas
+  Widget _buildEmptyTasksMessage() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.assignment_turned_in,
+            size: 70,
+            color: Colors.grey[400],
+          ),
+          SizedBox(height: 15),
+          Text(
+            'Tidak ada tugas yang menunggu',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Semua tugas telah selesai dikerjakan',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
