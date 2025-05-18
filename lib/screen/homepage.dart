@@ -31,6 +31,8 @@ class HomePageState extends State<HomePage> {
   bool hasImageError = false;
   List<Schedule> jadwals = [];
   List<Map<String, dynamic>> _courses = [];
+  List<Map<String, dynamic>> _pendingTasks = [];
+  bool _isTaskLoading = true;
 
   final List<IconData> randomIcons = [
     Icons.computer,
@@ -63,11 +65,213 @@ class HomePageState extends State<HomePage> {
     initializeDateFormatting('id_ID', null).then((_) {
       // Setelah inisialisasi, ambil data jadwal
       _fetchJadwal();
+      // Fetch pending tasks after user data is loaded
+      _fetchPendingTasks();
     });
   }
 
   String timeAgo(DateTime date) {
     return timeago.format(date, locale: 'id');
+  }
+
+  // Fungsi untuk mengambil tugas tertunda berdasarkan user yang login
+  void _addDummyTaskForTesting() {
+    // Fungsi ini hanya dipanggil untuk pengujian UI ketika tidak ada tugas yang ditemukan
+    print("🔧 DEBUG: Menambahkan tugas dummy untuk pengujian UI");
+
+    // Pastikan _pendingTasks sudah diinisialisasi
+    if (_pendingTasks == null) {
+      _pendingTasks = [];
+    }
+
+    // Tambahkan contoh tugas dengan tanggal tenggat besok (lebih realistis)
+    final tomorrow = DateTime.now().add(Duration(days: 1));
+    _pendingTasks.add({
+      'id': 99999,
+      'title': 'Contoh Tugas (Untuk Pengujian UI)',
+      'course': 'Mata Pelajaran Contoh',
+      'deadline': tomorrow.toString(),
+      'deadline_formatted':
+          'Besok, ${tomorrow.hour.toString().padLeft(2, '0')}:${tomorrow.minute.toString().padLeft(2, '0')}',
+      'isUrgent': false
+    });
+
+    // Tambahkan contoh tugas dengan status mendesak (untuk menguji UI status mendesak)
+    final yesterday = DateTime.now().subtract(Duration(days: 1));
+    _pendingTasks.add({
+      'id': 99998,
+      'title': 'Tugas Mendesak (Untuk Pengujian UI)',
+      'course': 'Mata Pelajaran Contoh',
+      'deadline': yesterday.toString(),
+      'deadline_formatted':
+          'Kemarin, ${yesterday.hour.toString().padLeft(2, '0')}:${yesterday.minute.toString().padLeft(2, '0')}',
+      'isUrgent': true
+    });
+
+    // Update state agar UI diperbarui
+    setState(() {});
+
+    print("🔧 DEBUG: ${_pendingTasks.length} tugas dummy telah ditambahkan");
+  }
+
+  Future<void> _fetchPendingTasks() async {
+    setState(() {
+      _isTaskLoading = true;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('student_id');
+    final classroomId = prefs.getString('classroom_id');
+
+    print("🔍 DEBUG: Mengambil tugas yang belum dikerjakan");
+    print("🔍 DEBUG: ID Pengguna: $userId");
+    print("🔍 DEBUG: ID Kelas: $classroomId");
+
+    // Periksa apakah ID pengguna dan ID kelas tersedia
+    if (userId == null || classroomId == null) {
+      print("⚠️ ERROR: ID pengguna atau ID kelas tidak ditemukan!");
+      _showErrorSnackbar(
+          "ID pengguna atau ID kelas tidak ditemukan. Silakan logout dan login kembali.");
+      setState(() {
+        _pendingTasks = [];
+        _isTaskLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final url = "${baseUrl}api/tasks/$classroomId/pending/$userId";
+      print("🔍 DEBUG: Memanggil URL API: $url");
+
+      // Tambahkan timeout untuk mencegah permintaan menggantung terlalu lama
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(Duration(seconds: 15), onTimeout: () {
+        print("⚠️ TIMEOUT: Permintaan API melebihi batas waktu");
+        return http.Response('{"error": "Timeout"}', 408);
+      });
+
+      print("🔍 DEBUG: Status Respons API: ${response.statusCode}");
+
+      // Log body respons hanya jika tidak terlalu panjang
+      if (response.body.length < 1000) {
+        print("🔍 DEBUG: Body Respons API: ${response.body}");
+      } else {
+        print("🔍 DEBUG: Body Respons API terlalu panjang untuk dilog");
+      }
+
+      if (response.statusCode == 200) {
+        // Coba decode JSON dengan penanganan error
+        Map<String, dynamic> data;
+        try {
+          // Pastikan hasil decode tidak null dan bertipe Map<String, dynamic>
+          final decodedData = jsonDecode(response.body);
+          if (decodedData is Map<String, dynamic>) {
+            data = decodedData;
+          } else {
+            throw FormatException("Data bukan dalam format Map");
+          }
+        } catch (e) {
+          print("❌ ERROR: Gagal mendecode respons JSON: $e");
+          _showErrorSnackbar("Format respons server tidak valid");
+          setState(() {
+            _pendingTasks = [];
+            _isTaskLoading = false;
+          });
+          return;
+        }
+
+        // Periksa apakah data berisi tugas
+        if (data.containsKey('tasks')) {
+          final taskData = data['tasks'];
+          print(
+              "🔍 DEBUG: Tugas ditemukan dalam respons: ${taskData is List ? taskData.length : 'bukan list'}");
+
+          // Periksa apakah ada info debug
+          if (data.containsKey('debug_info')) {
+            print("🔍 INFO DEBUG SERVER: ${data['debug_info']}");
+          }
+
+          setState(() {
+            // Pastikan kita mendapatkan list yang valid
+            if (taskData is List) {
+              _pendingTasks = List<Map<String, dynamic>>.from(taskData);
+            } else {
+              print("⚠️ ERROR: Format 'tasks' bukan List");
+              _pendingTasks = [];
+            }
+            _isTaskLoading = false;
+          });
+
+          print(
+              "✅ SUKSES: Memuat ${_pendingTasks.length} tugas yang belum dikerjakan");
+
+          // Cetak detail setiap tugas untuk debugging
+          if (_pendingTasks.isNotEmpty) {
+            for (var i = 0; i < _pendingTasks.length; i++) {
+              print("🔍 TUGAS $i: ${_pendingTasks[i]}");
+            }
+          } else {
+            print(
+                "⚠️ PERINGATAN: Tidak ada tugas yang belum dikerjakan ditemukan dalam respons");
+            setState(() {
+              // Tampilkan pesan kosong alih-alih tugas dummy
+              _pendingTasks = [];
+            });
+          }
+        } else {
+          print("⚠️ ERROR: Kunci 'tasks' tidak ditemukan dalam respons API");
+          _showErrorSnackbar("Format respons server tidak valid");
+          setState(() {
+            _pendingTasks = [];
+            _isTaskLoading = false;
+          });
+        }
+      } else if (response.statusCode == 408) {
+        print("❌ ERROR: Permintaan API timeout");
+        _showErrorSnackbar("Koneksi ke server timeout. Silakan coba lagi.");
+        setState(() {
+          _pendingTasks = [];
+          _isTaskLoading = false;
+        });
+      } else {
+        print(
+            "❌ ERROR: Panggilan API gagal dengan kode status ${response.statusCode}");
+        print("❌ Body Respons Error: ${response.body}");
+        _showErrorSnackbar(
+            "Gagal mengambil data tugas (Error ${response.statusCode})");
+        setState(() {
+          _pendingTasks = [];
+          _isTaskLoading = false;
+        });
+      }
+    } catch (e) {
+      print(
+          "❌ EXCEPTION: Error saat mengambil tugas yang belum dikerjakan: $e");
+      _showErrorSnackbar("Terjadi kesalahan: ${e.toString()}");
+      setState(() {
+        _pendingTasks = [];
+        _isTaskLoading = false;
+      });
+    }
+  }
+
+// Tambahkan fungsi untuk menampilkan snackbar error
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'OK',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _loadUserData() async {
@@ -312,21 +516,6 @@ class HomePageState extends State<HomePage> {
       return [];
     }
   }
-
-  final List<Map<String, dynamic>> _assignments = [
-    {
-      'title': 'Membuat Web Portfolio',
-      'course': 'Pemrograman Web',
-      'deadline': 'Hari ini, 14:00',
-      'isUrgent': true,
-    },
-    {
-      'title': 'Membuat ERD Database Perpustakaan',
-      'course': 'Basis Data',
-      'deadline': 'Besok, 10:00',
-      'isUrgent': false,
-    },
-  ];
 
   List<Announcement> _announcements = [];
   bool _isLoading = true;
@@ -633,8 +822,13 @@ class HomePageState extends State<HomePage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildActivityCard(Icons.assignment, '0',
-                          'Tugas Tertunda', Colors.orange),
+                      _buildActivityCard(
+                          Icons.assignment,
+                          _isTaskLoading
+                              ? '...'
+                              : _pendingTasks.length.toString(),
+                          'Tugas Tertunda',
+                          Colors.orange),
                       _buildActivityCard(
                           Icons.book, '4', 'Tugas Terlambat', Colors.green),
                       _buildActivityCard(
@@ -685,7 +879,8 @@ class HomePageState extends State<HomePage> {
                           ),
                         ),
                   const SizedBox(height: 30),
-                  // Assignments Section
+
+                  // Tugas Tertunda Section
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -697,7 +892,9 @@ class HomePageState extends State<HomePage> {
                         ),
                       ),
                       TextButton.icon(
-                        onPressed: () {},
+                        onPressed: () {
+                          // Navigasi ke halaman semua tugas tertunda
+                        },
                         icon: const Icon(Icons.arrow_forward),
                         label: const Text('Lihat Semua'),
                         style: TextButton.styleFrom(
@@ -707,14 +904,32 @@ class HomePageState extends State<HomePage> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _assignments.length,
-                    itemBuilder: (context, index) {
-                      return _buildAssignmentCard(_assignments[index]);
-                    },
-                  ),
+                  _isTaskLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _pendingTasks.isEmpty
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 20),
+                                child: Text(
+                                  'Tidak ada tugas tertunda',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _pendingTasks.length > 3
+                                  ? 3
+                                  : _pendingTasks.length,
+                              itemBuilder: (context, index) {
+                                return _buildAssignmentCard(
+                                    _pendingTasks[index]);
+                              },
+                            ),
 
                   const SizedBox(height: 30),
 
@@ -816,6 +1031,74 @@ class HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildEmptyTasksMessage() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.assignment_turned_in,
+            size: 70,
+            color: Colors.grey[400],
+          ),
+          SizedBox(height: 20),
+          Text(
+            'Tidak ada tugas yang belum dikerjakan',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Semua tugas sudah dikumpulkan. Selamat!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+// Modifikasi bagian tampilan untuk menampilkan daftar tugas atau pesan kosong
+  Widget _buildTasksSection() {
+    if (_isTaskLoading) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text(
+              'Memuat tugas...',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[700],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_pendingTasks.isEmpty) {
+      return _buildEmptyTasksMessage();
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      itemCount: _pendingTasks.length,
+      itemBuilder: (context, index) {
+        return _buildAssignmentCard(_pendingTasks[index]);
+      },
+    );
+  }
+
   Widget _buildAssignmentCard(Map<String, dynamic> assignment) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
@@ -837,20 +1120,21 @@ class HomePageState extends State<HomePage> {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: assignment['isUrgent']
+            color: assignment['isUrgent'] == true
                 ? Colors.red.withOpacity(0.1)
                 : Colors.blue.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
             Icons.assignment,
-            color:
-                assignment['isUrgent'] ? Colors.red : const Color(0xFF1976D2),
+            color: assignment['isUrgent'] == true
+                ? Colors.red
+                : const Color(0xFF1976D2),
             size: 24,
           ),
         ),
         title: Text(
-          assignment['title'],
+          assignment['course'] ?? 'Tugas Tanpa Judul',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
@@ -861,7 +1145,7 @@ class HomePageState extends State<HomePage> {
           children: [
             const SizedBox(height: 5),
             Text(
-              assignment['course'],
+              assignment['title'] ?? 'Tidak Ada Mata Pelajaran',
               style: TextStyle(
                 color: Colors.grey[700],
                 fontSize: 14,
@@ -873,14 +1157,19 @@ class HomePageState extends State<HomePage> {
                 Icon(
                   Icons.access_time,
                   size: 14,
-                  color: assignment['isUrgent'] ? Colors.red : Colors.grey,
+                  color:
+                      assignment['isUrgent'] == true ? Colors.red : Colors.grey,
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  assignment['deadline'],
+                  assignment['deadline_formatted'] ??
+                      assignment['deadline'] ??
+                      'Tidak Ada Deadline',
                   style: TextStyle(
-                    color: assignment['isUrgent'] ? Colors.red : Colors.grey,
-                    fontWeight: assignment['isUrgent']
+                    color: assignment['isUrgent'] == true
+                        ? Colors.red
+                        : Colors.grey,
+                    fontWeight: assignment['isUrgent'] == true
                         ? FontWeight.bold
                         : FontWeight.normal,
                     fontSize: 13,
@@ -901,7 +1190,10 @@ class HomePageState extends State<HomePage> {
               size: 16,
               color: Color(0xFF1976D2),
             ),
-            onPressed: () {},
+            onPressed: () {
+              // Navigate to task detail page
+              // You might want to implement this navigation
+            },
           ),
         ),
       ),

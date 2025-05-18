@@ -1,49 +1,3 @@
-// Step 1: First, add the necessary dependencies to your pubspec.yaml
-// This is a partial example, add these to your existing dependencies
-
-// In pubspec.yaml:
-/*
-dependencies:
-  flutter:
-    sdk: flutter
-  path_provider: ^2.1.1
-  dio: ^5.3.2
-  http: ^1.1.0
-  url_launcher: ^6.1.14
-  flutter_pdfview: ^1.3.2
-  share_plus: ^7.1.0 # Add this for sharing files
-  path: ^1.8.3 # Add this for path manipulation
-*/
-
-// Step 2: Add FileProvider configuration to your Android manifest
-// In android/app/src/main/AndroidManifest.xml inside the <application> tag:
-/*
-<provider
-    android:name="androidx.core.content.FileProvider"
-    android:authorities="${applicationId}.fileprovider"
-    android:exported="false"
-    android:grantUriPermissions="true">
-    <meta-data
-        android:name="android.support.FILE_PROVIDER_PATHS"
-        android:resource="@xml/file_paths" />
-</provider>
-*/
-
-// Step 3: Create the file_paths.xml resource file
-// In android/app/src/main/res/xml/file_paths.xml:
-/*
-<?xml version="1.0" encoding="utf-8"?>
-<paths>
-    <external-path name="external_files" path="."/>
-    <files-path name="files" path="."/>
-    <cache-path name="cache" path="."/>
-    <external-cache-path name="external_cache" path="."/>
-    <external-files-path name="external_files" path="."/>
-</paths>
-*/
-
-// Step 4: Update your DetailMateriPage class with the fixed code below
-
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -56,6 +10,7 @@ import 'package:path/path.dart' as path;
 import '../model/slug.dart';
 import '../model/subjectmatter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class DetailMateriPage extends StatefulWidget {
   final Slug slug;
