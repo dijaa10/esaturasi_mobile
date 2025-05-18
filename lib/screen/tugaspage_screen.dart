@@ -93,7 +93,19 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
     });
 
     try {
-      final response = await http.get(Uri.parse('${baseUrl}api/tugas'));
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      print('Token terkirim: Bearer $token');
+
+      final response = await http.get(
+        Uri.parse('${baseUrl}api/tugas'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
       if (response.statusCode == 200) {
         List jsonResponse = json.decode(response.body);
         setState(() {
@@ -105,6 +117,9 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
         setState(() {
           _isLoading = false;
         });
+
+        print('Response gagal: ${response.body}');
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content:
@@ -115,6 +130,7 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
       setState(() {
         _isLoading = false;
       });
+      print('Error fetchTasks(): $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal memuat tugas: ${e.toString()}')),
       );
@@ -124,7 +140,6 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   void _filterTasks() {
     setState(() {
       filteredTasks = tasks.where((task) {
-        // Filter berdasarkan pencarian
         final mapel = task.mataPelajaran ?? '';
         final judul = task.judul ?? '';
         final searchMatch =

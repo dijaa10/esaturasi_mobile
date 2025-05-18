@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
+import 'dart:io';
 import '../utils/attachment_dialog.dart';
 import '../model/tugas.dart';
 import '../utils/file_picker_utils.dart';
 import '../model/task_service.dart';
-import 'dart:io';
+import '../model/submissionstatus.dart';
 
 class DetailTugasPage extends StatefulWidget {
   final Tugas task;
@@ -19,31 +20,41 @@ class DetailTugasPage extends StatefulWidget {
 
 class _DetailTugasPageState extends State<DetailTugasPage> {
   late Future<Uint8List?> imageBytes;
-  File? _selectedFile; // simpan file yang dipilih
-  late String _status; // variabel status yang bisa diubah dinamis
+  File? _selectedFile;
+  late String _status;
   bool _isUploading = false;
 
   @override
   void initState() {
     super.initState();
     imageBytes = _fetchImage(widget.task.imageUrl);
-    _status = widget.task.status ??
-        "Belum Dikerjakan"; // inisialisasi dari data tugas
+    _status = widget.task.status ?? "Belum Dikerjakan";
+    _loadLatestStatus(); // ambil status terbaru dari server
+  }
+
+  Future<void> _loadLatestStatus() async {
+    final taskService = TaskService();
+    final SubmissionModel? statusData =
+        await taskService.getSubmissionStatus(widget.task.id.toString());
+    if (statusData != null && mounted) {
+      setState(() {
+        _status =
+            statusData.statusText; // Gunakan statusText untuk user-friendly
+      });
+    } else if (mounted) {
+      setState(() {
+        _status = "Status tidak tersedia";
+      });
+    }
   }
 
   Future<Uint8List?> _fetchImage(String? url) async {
-    if (url == null || url.isEmpty) {
-      return null;
-    }
+    if (url == null || url.isEmpty) return null;
     try {
       final response =
           await http.get(Uri.parse(url)).timeout(Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        return response.bodyBytes;
-      } else {
-        return null;
-      }
-    } catch (e) {
+      return response.statusCode == 200 ? response.bodyBytes : null;
+    } catch (_) {
       return null;
     }
   }
@@ -55,7 +66,7 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
   void showAttachmentOptions() {
     showModalBottomSheet(
       context: context,
-      builder: (BuildContext ctx) {
+      builder: (ctx) {
         return SafeArea(
           child: Wrap(
             children: [
@@ -66,9 +77,7 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                   Navigator.pop(ctx);
                   final file = await FilePickerUtil.pickImage();
                   if (file != null) {
-                    setState(() {
-                      _selectedFile = file;
-                    });
+                    setState(() => _selectedFile = file);
                     _showUploadConfirmation(file);
                   }
                 },
@@ -80,9 +89,7 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                   Navigator.pop(ctx);
                   final file = await FilePickerUtil.pickDocument();
                   if (file != null) {
-                    setState(() {
-                      _selectedFile = file;
-                    });
+                    setState(() => _selectedFile = file);
                     _showUploadConfirmation(file);
                   }
                 },
@@ -97,7 +104,7 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
   void _showUploadConfirmation(File file) async {
     bool? confirmed = await showDialog<bool>(
       context: context,
-      builder: (BuildContext ctx) {
+      builder: (ctx) {
         return AlertDialog(
           title: Text('Konfirmasi Upload'),
           content: Column(
@@ -106,22 +113,17 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
             children: [
               Text('Apakah kamu yakin ingin mengirim file ini?'),
               SizedBox(height: 8),
-              Text(
-                file.path.split('/').last,
-                style: TextStyle(fontWeight: FontWeight.bold),
-                overflow: TextOverflow.ellipsis,
-              ),
+              Text(file.path.split('/').last,
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           actions: [
             TextButton(
-              child: Text('Batal'),
-              onPressed: () => Navigator.of(ctx).pop(false),
-            ),
+                child: Text('Batal'),
+                onPressed: () => Navigator.of(ctx).pop(false)),
             ElevatedButton(
-              child: Text('Ya, Upload'),
-              onPressed: () => Navigator.of(ctx).pop(true),
-            ),
+                child: Text('Ya, Upload'),
+                onPressed: () => Navigator.of(ctx).pop(true)),
           ],
         );
       },
@@ -133,96 +135,72 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
   }
 
   Future<void> _uploadSelectedFile(File file) async {
-    // Menampilkan indikator loading
-    setState(() {
-      _isUploading = true;
-    });
-
+    setState(() => _isUploading = true);
     try {
       final taskService = TaskService();
       bool success = await taskService.uploadTaskWithFile(
         tugasId: widget.task.id.toString(),
-        siswaId: "1", // sesuaikan kalau bisa dinamis
+        siswaId: "1", // ganti nanti sesuai user login
         file: file,
       );
 
-      // Sembunyikan indikator loading
-      setState(() {
-        _isUploading = false;
-      });
+      setState(() => _isUploading = false);
 
       if (success) {
+        final statusData =
+            await taskService.getSubmissionStatus(widget.task.id.toString());
         setState(() {
           _selectedFile = null;
-          _status =
-              "Sudah Dikumpulkan"; // Update status dengan format yang konsisten (D besar)
+          _status = statusData?.statusText ?? "Status tidak tersedia";
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Tugas berhasil diupload'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        // Tampilkan dialog konfirmasi
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Tugas berhasil diupload'),
+          backgroundColor: Colors.green,
+        ));
         _showSuccessDialog();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal mengupload tugas'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Gagal mengupload tugas'),
+          backgroundColor: Colors.red,
+        ));
       }
     } catch (e) {
-      // Sembunyikan indikator loading jika terjadi error
-      setState(() {
-        _isUploading = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Terjadi kesalahan saat upload: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() => _isUploading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Terjadi kesalahan saat upload: ${e.toString()}'),
+        backgroundColor: Colors.red,
+      ));
     }
   }
 
   void _showSuccessDialog() {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green),
-              SizedBox(width: 8),
-              Text('Tugas Berhasil Dikumpulkan')
-            ],
-          ),
-          content: Text(
-              'Tugas berhasil dikirim. Status tugas telah diperbarui menjadi "Sudah Dikumpulkan".'),
-          actions: [
-            TextButton(
-              child: Text('Kembali ke Daftar Tugas'),
-              onPressed: () {
-                // Pop dialog dulu
-                Navigator.of(context).pop();
-                // Kemudian pop halaman detail dengan result true
-                Navigator.pop(context, true);
-              },
-            ),
-            ElevatedButton(
-              child: Text('Tetap di Halaman Ini'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Tugas Berhasil Dikumpulkan'),
           ],
-        );
-      },
+        ),
+        content: Text(
+            'Tugas berhasil dikirim. Status tugas telah diperbarui menjadi "Sudah Dikumpulkan".'),
+        actions: [
+          TextButton(
+            child: Text('Kembali ke Daftar Tugas'),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.pop(context, true);
+            },
+          ),
+          ElevatedButton(
+            child: Text('Tetap di Halaman Ini'),
+            onPressed: () => Navigator.of(ctx).pop(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -230,7 +208,6 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
   Widget build(BuildContext context) {
     final Color subjectColor = _getSubjectColor(widget.task.judul ?? "");
     final bool isDarkColor = _isDarkColor(subjectColor);
-    final Color textColor = isDarkColor ? Colors.white : Colors.black87;
 
     return Scaffold(
       body: Stack(
@@ -238,15 +215,12 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
           CustomScrollView(
             slivers: [
               SliverAppBar(
-                expandedHeight: 220.0,
+                expandedHeight: 220,
                 pinned: true,
                 backgroundColor: subjectColor,
                 flexibleSpace: FlexibleSpaceBar(
-                  title: Text(
-                    widget.task.judul ?? "Detail Tugas",
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
+                  title: Text(widget.task.judul ?? "Detail Tugas",
+                      style: TextStyle(color: Colors.white)),
                   background: FutureBuilder<Uint8List?>(
                     future: imageBytes,
                     builder: (context, snapshot) {
@@ -278,7 +252,7 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
               ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -304,12 +278,13 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                                 subjectColor),
                             Divider(height: 24),
                             _buildInfoRow(
-                                Icons.calendar_today,
-                                "Tenggat",
-                                _formatDeadline(widget.task.deadline ?? ""),
-                                subjectColor,
-                                valueColor: _getDeadlineColor(
-                                    widget.task.deadline ?? "")),
+                              Icons.calendar_today,
+                              "Tenggat",
+                              _formatDeadline(widget.task.deadline ?? ""),
+                              subjectColor,
+                              valueColor:
+                                  _getDeadlineColor(widget.task.deadline ?? ""),
+                            ),
                             Divider(height: 24),
                             GestureDetector(
                               onTap: () {
@@ -324,16 +299,16 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                                 }
                               },
                               child: _buildInfoRow(
-                                  Icons.attach_file,
-                                  "Lampiran",
-                                  "${widget.task.attachments ?? 0} file",
-                                  subjectColor),
+                                Icons.attach_file,
+                                "Lampiran",
+                                "${widget.task.attachments ?? 0} file",
+                                subjectColor,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       SizedBox(height: 20),
-
                       if (_selectedFile != null)
                         Container(
                           margin: EdgeInsets.only(bottom: 16),
@@ -350,23 +325,17 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                                   color: Colors.grey[700]),
                               SizedBox(width: 8),
                               Expanded(
-                                child: Text(
-                                  _selectedFile!.path.split('/').last,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                child: Text(_selectedFile!.path.split('/').last,
+                                    overflow: TextOverflow.ellipsis),
                               ),
                               IconButton(
                                 icon: Icon(Icons.close, color: Colors.red),
-                                onPressed: () {
-                                  setState(() {
-                                    _selectedFile = null;
-                                  });
-                                },
+                                onPressed: () =>
+                                    setState(() => _selectedFile = null),
                               ),
                             ],
                           ),
                         ),
-
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -383,27 +352,20 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                                 ? 'Edit/Mengerjakan Ulang Tugas'
                                 : 'Mengerjakan Tugas',
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white),
                           ),
                         ),
                       ),
-
                       SizedBox(height: 12),
-
-                      // Tombol Selesai
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: OutlinedButton(
                           onPressed: _isUploading
                               ? null
-                              : () {
-                                  // Kembalikan true jika status adalah "Sudah Dikumpulkan"
-                                  Navigator.pop(
-                                      context, _status == 'Sudah Dikumpulkan');
-                                },
+                              : () => Navigator.pop(
+                                  context, _status == 'Sudah Dikumpulkan'),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
                                 color:
@@ -414,9 +376,9 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                           child: Text(
                             'Selesai',
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: _isUploading ? Colors.grey : subjectColor,
-                            ),
+                                fontWeight: FontWeight.bold,
+                                color:
+                                    _isUploading ? Colors.grey : subjectColor),
                           ),
                         ),
                       ),
@@ -426,8 +388,6 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
               ),
             ],
           ),
-
-          // Overlay loading saat proses upload
           if (_isUploading)
             Container(
               color: Colors.black54,
@@ -435,19 +395,16 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
                 child: Card(
                   elevation: 8,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                      borderRadius: BorderRadius.circular(16)),
                   child: Padding(
-                    padding: const EdgeInsets.all(24.0),
+                    padding: EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         CircularProgressIndicator(),
                         SizedBox(height: 16),
-                        Text(
-                          'Mengupload tugas...',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                        Text('Mengupload tugas...',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -461,10 +418,9 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
 
   Widget _buildStatusBadge(String status) {
     Color color = _getStatusColor(status);
-    IconData icon = status == 'Sudah Dikumpulkan'
+    IconData icon = status.toLowerCase() == 'sudah dikumpulkan'
         ? Icons.check_circle
         : Icons.pending_actions;
-
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -477,7 +433,7 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
         children: [
           Icon(icon, size: 16, color: color),
           SizedBox(width: 4),
-          Text(status, style: TextStyle(color: color)),
+          Text(status, style: TextStyle(color: color))
         ],
       ),
     );
@@ -488,9 +444,8 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
     return Row(
       children: [
         CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
-          child: Icon(icon, color: color),
-        ),
+            backgroundColor: color.withOpacity(0.2),
+            child: Icon(icon, color: color)),
         SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -561,16 +516,11 @@ class _DetailTugasPageState extends State<DetailTugasPage> {
   Color _getDeadlineColor(String deadlineStr) {
     try {
       DateTime deadline = DateTime.parse(deadlineStr);
-      DateTime now = DateTime.now();
-      Duration difference = deadline.difference(now);
-      if (difference.isNegative) {
-        return Colors.red;
-      } else if (difference.inDays < 2) {
-        return Colors.orange;
-      } else {
-        return Colors.black87;
-      }
-    } catch (e) {
+      Duration diff = deadline.difference(DateTime.now());
+      if (diff.isNegative) return Colors.red;
+      if (diff.inDays < 2) return Colors.orange;
+      return Colors.black87;
+    } catch (_) {
       return Colors.grey;
     }
   }

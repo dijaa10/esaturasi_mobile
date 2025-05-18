@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'auth_service.dart';
+import 'submissionstatus.dart';
 
 class TaskService {
   final AuthService authService = AuthService();
@@ -61,6 +62,46 @@ class TaskService {
     } catch (e) {
       print('Error saat upload tugas: $e');
       return false;
+    }
+  }
+
+  Future<SubmissionModel?> getSubmissionStatus(String taskId) async {
+    try {
+      String? token = await authService.getToken();
+      if (token == null) {
+        print('Token tidak tersedia, harus login ulang');
+        return null;
+      }
+
+      var uri = Uri.parse('$baseUrl/status-pengumpulan/$taskId');
+      var response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonBody = jsonDecode(response.body);
+        final data = jsonBody['data'];
+        if (data != null) {
+          return SubmissionModel.fromJson(data);
+        } else {
+          print('Data status pengumpulan kosong');
+          return null;
+        }
+      } else if (response.statusCode == 404) {
+        print('Belum ada pengumpulan tugas');
+        return null;
+      } else {
+        print('Gagal mendapatkan status: ${response.statusCode}');
+        print('Response: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Error saat mengecek status: $e');
+      return null;
     }
   }
 }
