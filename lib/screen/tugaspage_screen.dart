@@ -412,7 +412,8 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   }
 
   Widget buildTaskCard(Tugas task) {
-    final bool isCompleted = task.status == 'Sudah Dikumpulkan';
+    final bool isCompleted = task.status.toLowerCase() == 'submitted';
+    final Color statusColor = isCompleted ? Colors.green : Colors.red;
 
     return Card(
       margin: EdgeInsets.only(bottom: 12),
@@ -462,14 +463,14 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                             ? Icons.check_circle
                             : Icons.assignment_late,
                         size: 16,
-                        color: isCompleted ? Colors.green : Colors.red,
+                        color: statusColor,
                       ),
                       SizedBox(width: 4),
                       Text(
-                        'Status: ${task.status ?? "-"}',
+                        'Status: ${task.statusText}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: isCompleted ? Colors.green : Colors.red,
+                          color: statusColor,
                         ),
                       ),
                     ],

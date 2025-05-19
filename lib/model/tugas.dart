@@ -49,4 +49,31 @@ class Tugas {
       siswaId: json['siswa_id']?.toString(), // opsional jika tersedia
     );
   }
+
+  String get statusText {
+    switch (status) {
+      case 'submitted':
+        return 'Sudah Dikumpulkan';
+      case 'graded':
+        return 'Sudah Dinilai';
+      case 'rejected':
+        return 'Ditolak';
+      default:
+        return status;
+    }
+  }
+
+  // Getter untuk warna status
+  String get statusColor {
+    switch (status) {
+      case 'submitted':
+        return '#FFC107'; // Warna kuning untuk status menunggu
+      case 'graded':
+        return '#4CAF50'; // Warna hijau untuk status sudah dinilai
+      case 'rejected':
+        return '#F44336'; // Warna merah untuk status ditolak
+      default:
+        return '#9E9E9E'; // Warna abu-abu untuk status lainnya
+    }
+  }
 }
