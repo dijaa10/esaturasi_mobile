@@ -43,10 +43,10 @@ class Tugas {
       deadline: json['deadline'] ?? '',
       status: json['status'] ?? 'Belum dikumpulkan',
       attachments: json['attachments'] ?? 0,
-      score: json['score'], // opsional jika tersedia
-      fotoPath: json['file_path'], // opsional jika tersedia
+      score: json['score'],
+      fotoPath: json['file_path'],
       mataPelajaran: json['mata_pelajaran'] ?? 'Mata pelajaran tidak diketahui',
-      siswaId: json['siswa_id']?.toString(), // opsional jika tersedia
+      siswaId: json['siswa_id']?.toString(),
     );
   }
 
@@ -63,17 +63,16 @@ class Tugas {
     }
   }
 
-  // Getter untuk warna status
   String get statusColor {
     switch (status) {
       case 'submitted':
-        return '#FFC107'; // Warna kuning untuk status menunggu
+        return '#FFC107';
       case 'graded':
-        return '#4CAF50'; // Warna hijau untuk status sudah dinilai
+        return '#4CAF50';
       case 'rejected':
-        return '#F44336'; // Warna merah untuk status ditolak
+        return '#F44336';
       default:
-        return '#9E9E9E'; // Warna abu-abu untuk status lainnya
+        return '#9E9E9E';
     }
   }
 }

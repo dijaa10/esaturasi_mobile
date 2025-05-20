@@ -96,8 +96,6 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
 
-      print('Token terkirim: Bearer $token');
-
       final response = await http.get(
         Uri.parse('${baseUrl}api/tugas'),
         headers: {
@@ -118,8 +116,6 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
           _isLoading = false;
         });
 
-        print('Response gagal: ${response.body}');
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content:
@@ -130,7 +126,6 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
       setState(() {
         _isLoading = false;
       });
-      print('Error fetchTasks(): $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal memuat tugas: ${e.toString()}')),
       );
@@ -146,7 +141,6 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
             mapel.toLowerCase().contains(_searchQuery.toLowerCase()) ||
                 judul.toLowerCase().contains(_searchQuery.toLowerCase());
 
-        // Filter berdasarkan tab yang aktif
         final statusMatch = currentTab == 'Semua' ||
             (currentTab == 'Selesai' && task.status == 'Sudah Dikumpulkan');
 
@@ -244,14 +238,9 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                                   ),
                                 );
 
-                                // Jika kembali dengan result true (tugas telah di-submit)
                                 if (result == true) {
-                                  await fetchTasks(); // Refresh data tugas
-
-                                  // Animasikan ke tab "Selesai"
+                                  await fetchTasks();
                                   _tabController.animateTo(1);
-
-                                  // Tampilkan snackbar konfirmasi
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content:
@@ -451,9 +440,10 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                   Text(
                     'Deadline: ${_formatDeadline(task.deadline ?? "")}',
                     style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        fontStyle: FontStyle.italic),
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                   SizedBox(height: 6),
                   Row(
@@ -475,6 +465,22 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                       ),
                     ],
                   ),
+                  if (task.score != null) ...[
+                    SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.grade, size: 16, color: Colors.amber[800]),
+                        SizedBox(width: 4),
+                        Text(
+                          'Nilai: ${task.score}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

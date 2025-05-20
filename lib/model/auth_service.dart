@@ -30,7 +30,6 @@ class AuthService {
     return await secureStorage.read(key: 'token');
   }
 
-  // Cek apakah token masih valid dengan akses profil
   Future<bool> checkToken() async {
     String? token = await getToken();
     if (token == null) return false;
@@ -46,7 +45,6 @@ class AuthService {
     return response.statusCode == 200;
   }
 
-  // Simpan data user (bisa dikembangkan sesuai kebutuhan)
   Future<void> saveUserData(Map<String, dynamic> data) async {
     try {
       await secureStorage.write(key: 'user_name', value: data['name']);
@@ -56,7 +54,6 @@ class AuthService {
     }
   }
 
-  // Logout: hapus token dan data user
   Future<bool> logout() async {
     try {
       await secureStorage.delete(key: 'token');

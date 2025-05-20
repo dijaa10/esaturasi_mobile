@@ -14,7 +14,6 @@ class TaskService {
     required String siswaId,
   }) async {
     try {
-      // Ambil token dari AuthService
       String? token = await authService.getToken();
       if (token == null) {
         print('Token tidak tersedia, harus login ulang');
@@ -24,24 +23,19 @@ class TaskService {
       var uri = Uri.parse('$baseUrl/pengumpulan-tugas');
       var request = http.MultipartRequest('POST', uri);
 
-      // Header authorization dengan Bearer token
       request.headers['Authorization'] = 'Bearer $token';
       request.headers['Accept'] = 'application/json';
 
-      // Isi form fields
       request.fields['task_id'] = tugasId;
 
-      // Cek file
       if (!file.existsSync()) {
         print('File tidak ditemukan: ${file.path}');
         return false;
       }
 
-      // Tambah file ke request
       var multipartFile = await http.MultipartFile.fromPath('file', file.path);
       request.files.add(multipartFile);
 
-      // Kirim request
       var streamedResponse = await request.send();
 
       // Ambil response body untuk debug
