@@ -25,6 +25,7 @@ class HomePageState extends State<HomePage> {
   String fotoProfil = "";
   final String baseUrl = "https://esaturasi.my.id/";
 
+  int _lateTasksCount = 0;
   String currentDate = "";
   String greeting = "";
   bool isImageLoading = true;
@@ -134,6 +135,7 @@ class HomePageState extends State<HomePage> {
           "ID pengguna atau ID kelas tidak ditemukan. Silakan logout dan login kembali.");
       setState(() {
         _pendingTasks = [];
+        _lateTasksCount = 0; // Reset jumlah tugas terlambat
         _isTaskLoading = false;
       });
       return;
@@ -176,6 +178,7 @@ class HomePageState extends State<HomePage> {
           _showErrorSnackbar("Format respons server tidak valid");
           setState(() {
             _pendingTasks = [];
+            _lateTasksCount = 0; // Reset jumlah tugas terlambat
             _isTaskLoading = false;
           });
           return;
@@ -200,6 +203,9 @@ class HomePageState extends State<HomePage> {
             }
           }
 
+          // Variabel untuk menghitung tugas terlambat
+          int lateCount = 0;
+
           setState(() {
             // Pastikan kita mendapatkan list yang valid
             if (taskData is List) {
@@ -220,11 +226,26 @@ class HomePageState extends State<HomePage> {
                   return false;
                 }
 
+                // Periksa apakah tugas terlambat (isUrgent atau tanggal tenggat sudah lewat)
+                if (task['isUrgent'] == true ||
+                    (task.containsKey('deadline') &&
+                        DateTime.tryParse(task['deadline']) != null &&
+                        DateTime.parse(task['deadline'])
+                            .isBefore(DateTime.now()))) {
+                  lateCount++;
+                  print("🔍 DEBUG: Tugas ${task['id']} terlambat");
+                }
+
                 return true;
               }).toList();
+
+              // Update jumlah tugas terlambat
+              _lateTasksCount = lateCount;
+              print("🔍 DEBUG: Total tugas terlambat: $_lateTasksCount");
             } else {
               print("⚠️ ERROR: Format 'tasks' bukan List");
               _pendingTasks = [];
+              _lateTasksCount = 0; // Reset jumlah tugas terlambat
             }
             _isTaskLoading = false;
           });
@@ -243,6 +264,7 @@ class HomePageState extends State<HomePage> {
             setState(() {
               // Tampilkan pesan kosong alih-alih tugas dummy
               _pendingTasks = [];
+              _lateTasksCount = 0; // Reset jumlah tugas terlambat
             });
           }
         } else {
@@ -250,6 +272,7 @@ class HomePageState extends State<HomePage> {
           _showErrorSnackbar("Format respons server tidak valid");
           setState(() {
             _pendingTasks = [];
+            _lateTasksCount = 0; // Reset jumlah tugas terlambat
             _isTaskLoading = false;
           });
         }
@@ -258,6 +281,7 @@ class HomePageState extends State<HomePage> {
         _showErrorSnackbar("Koneksi ke server timeout. Silakan coba lagi.");
         setState(() {
           _pendingTasks = [];
+          _lateTasksCount = 0; // Reset jumlah tugas terlambat
           _isTaskLoading = false;
         });
       } else {
@@ -268,6 +292,7 @@ class HomePageState extends State<HomePage> {
             "Gagal mengambil data tugas (Error ${response.statusCode})");
         setState(() {
           _pendingTasks = [];
+          _lateTasksCount = 0; // Reset jumlah tugas terlambat
           _isTaskLoading = false;
         });
       }
@@ -277,6 +302,7 @@ class HomePageState extends State<HomePage> {
       _showErrorSnackbar("Terjadi kesalahan: ${e.toString()}");
       setState(() {
         _pendingTasks = [];
+        _lateTasksCount = 0; // Reset jumlah tugas terlambat
         _isTaskLoading = false;
       });
     }
@@ -849,7 +875,10 @@ class HomePageState extends State<HomePage> {
                           'Tugas Tertunda',
                           Colors.orange),
                       _buildActivityCard(
-                          Icons.book, '0', 'Tugas Terlambat', Colors.green),
+                          Icons.book,
+                          _isTaskLoading ? '...' : _lateTasksCount.toString(),
+                          'Tugas Terlambat',
+                          Colors.green),
                       _buildActivityCard(
                         Icons.campaign,
                         _announcements.length.toString(),
