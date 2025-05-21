@@ -172,13 +172,13 @@ class Schedule {
     }
 
     return Schedule(
-      id: json['id'] ?? 0,
-      classroomId: json['classroom_id'] ?? 0,
-      subjectId: json['subject_id'] ?? 0,
-      teacherId: json['teacher_id'] ?? 0,
-      archiveId: json['archive_id'] ?? 0,
-      createdAt: json['created_at'] ?? '',
-      updatedAt: json['updated_at'] ?? '',
+      id: int.tryParse(json['id'].toString()) ?? 0,
+      classroomId: int.tryParse(json['classroom_id'].toString()) ?? 0,
+      subjectId: int.tryParse(json['subject_id'].toString()) ?? 0,
+      teacherId: int.tryParse(json['teacher_id'].toString()) ?? 0,
+      archiveId: int.tryParse(json['archive_id'].toString()) ?? 0,
+      createdAt: json['created_at']?.toString() ?? '',
+      updatedAt: json['updated_at']?.toString() ?? '',
       subjectName: subjectNameValue,
       classroomName: classroomNameValue,
       teacherName: teacherNameValue,

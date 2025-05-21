@@ -17,15 +17,15 @@ class Slug {
 
   factory Slug.fromJson(Map<String, dynamic> json) {
     return Slug(
-      id: json['id'] ?? 0,
-      title: json['title'] ?? '', // Changed from judul
-      slug: json['slug'] ?? '', // Added new field
-      scheduleId: json['schedule_id'] ?? 0, // Changed from jadwal_id
+      id: int.tryParse(json['id'].toString()) ?? 0,
+      title: json['title']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? '',
+      scheduleId: int.tryParse(json['schedule_id'].toString()) ?? 0,
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
+          ? DateTime.tryParse(json['created_at'].toString())
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
+          ? DateTime.tryParse(json['updated_at'].toString())
           : null,
     );
   }

@@ -69,7 +69,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       }
 
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8000/api/change-password'),
+        Uri.parse('https://esaturasi.my.id/api/change-password'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

@@ -21,7 +21,7 @@ class _MateriPageState extends State<MateriPage>
   List<Slug> filteredSlugs = [];
   bool _isLoading = true;
   String _errorMessage = '';
-  final String baseUrl = "http://10.0.2.2:8000/";
+  final String baseUrl = "https://esaturasi.my.id/";
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   TextEditingController _searchController = TextEditingController();

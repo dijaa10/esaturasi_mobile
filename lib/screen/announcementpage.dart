@@ -13,7 +13,7 @@ class Announcementpage extends StatefulWidget {
 class _AnnouncementPageState extends State<Announcementpage> {
   List<Announcement> _announcements = [];
   bool _isLoading = true;
-  final String baseUrl = "http://10.0.2.2:8000/";
+  final String baseUrl = "https://esaturasi.my.id/";
 
   @override
   void initState() {

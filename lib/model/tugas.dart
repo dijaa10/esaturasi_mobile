@@ -25,7 +25,7 @@ class Tugas {
     this.siswaId,
   });
 
-  static const String baseUrl = "http://10.0.2.2:8000";
+  static const String baseUrl = "https://esaturasi.my.id";
 
   String? get imageUrl {
     if (fotoPath != null && fotoPath!.isNotEmpty) {
@@ -36,16 +36,17 @@ class Tugas {
 
   factory Tugas.fromJson(Map<String, dynamic> json) {
     return Tugas(
-      id: json['id'],
-      judul: json['judul'] ?? '',
-      deskripsi: json['deskripsi'] ?? '',
-      guru: json['guru'] ?? 'Guru tidak diketahui',
-      deadline: json['deadline'] ?? '',
-      status: json['status'] ?? 'Belum dikumpulkan',
-      attachments: json['attachments'] ?? 0,
-      score: json['score'],
-      fotoPath: json['file_path'],
-      mataPelajaran: json['mata_pelajaran'] ?? 'Mata pelajaran tidak diketahui',
+      id: int.tryParse(json['id'].toString()) ?? 0,
+      judul: json['judul']?.toString() ?? '',
+      deskripsi: json['deskripsi']?.toString() ?? '',
+      guru: json['guru']?.toString() ?? 'Guru tidak diketahui',
+      deadline: json['deadline']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Belum dikumpulkan',
+      attachments: int.tryParse(json['attachments'].toString()) ?? 0,
+      score: json['score'] != null ? int.tryParse(json['score'].toString()) : null, 
+      fotoPath: json['file_path']?.toString(),
+      mataPelajaran: json['mata_pelajaran']?.toString() ??
+          'Mata pelajaran tidak diketahui',
       siswaId: json['siswa_id']?.toString(),
     );
   }

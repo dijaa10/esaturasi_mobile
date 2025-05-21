@@ -21,13 +21,13 @@ class Subjectmatter {
 
   factory Subjectmatter.fromJson(Map<String, dynamic> json) {
     return Subjectmatter(
-      id: json['id'] as int,
-      slugId: json['slug_id'] as int,
-      title: json['title'] as String,
-      description: json['description'] as String?,
-      filePath: json['file_path'] as String,
-      createdAt: json['created_at'] as String,
-      updatedAt: json['updated_at'] as String,
+      id: int.tryParse(json['id'].toString()) ?? 0,
+      slugId: int.tryParse(json['slug_id'].toString()) ?? 0,
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString(),
+      filePath: json['file_path']?.toString() ?? '',
+      createdAt: json['created_at']?.toString() ?? '',
+      updatedAt: json['updated_at']?.toString() ?? '',
     );
   }
 }

@@ -21,14 +21,16 @@ class SubmissionModel {
 
   factory SubmissionModel.fromJson(Map<String, dynamic> json) {
     return SubmissionModel(
-      id: json['id'],
-      taskId: json['task_id'],
-      studentId: json['student_id'],
-      filePath: json['file_path'],
-      assignment: json['assignment'],
-      status: json['status'],
-      createdAt: json['created_at'],
-      taskTitle: json['task_title'],
+      id: json['id'] ?? 0,
+      taskId: json['task_id'] ?? 0,
+      studentId: json['student_id'] ?? 0,
+      filePath: json['file_path']?.toString() ?? '',
+      assignment: json['assignment'] != null
+          ? int.tryParse(json['assignment'].toString())
+          : null,
+      status: json['status']?.toString() ?? 'unknown',
+      createdAt: json['created_at']?.toString() ?? '',
+      taskTitle: json['task_title']?.toString() ?? 'Judul tidak tersedia',
     );
   }
 

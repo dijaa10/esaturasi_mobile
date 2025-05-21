@@ -6,7 +6,7 @@ import 'submissionstatus.dart';
 
 class TaskService {
   final AuthService authService = AuthService();
-  final String baseUrl = "http://10.0.2.2:8000/api";
+  final String baseUrl = "https://esaturasi.my.id/api";
 
   Future<bool> uploadTaskWithFile({
     required String tugasId,

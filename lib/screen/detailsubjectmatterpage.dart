@@ -29,7 +29,7 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
   final Dio _dio = Dio();
 
   // Change baseUrl to use IP address that works better with emulators
-  final String baseUrl = "http://10.0.2.2:8000";
+  final String baseUrl = "https://esaturasi.my.id";
   // Track selected material name for the app bar title
   String _selectedMaterialName = "";
   // Flag to remember if PDF viewer had errors
