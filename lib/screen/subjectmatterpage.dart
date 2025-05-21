@@ -560,7 +560,7 @@ class _MateriPageState extends State<MateriPage>
     final colorPair = colorPairs[hashCode % colorPairs.length];
 
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(top: 10),
       child: Card(
         elevation: 0,
         shape: RoundedRectangleBorder(

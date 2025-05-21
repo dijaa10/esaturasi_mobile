@@ -537,20 +537,25 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         MaterialPageRoute(
           builder: (context) => Scaffold(
             appBar: AppBar(
-              title: Text(fileName),
+              title: Text(
+                fileName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+              flexibleSpace: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
               backgroundColor: const Color(0xFF1976D2),
               elevation: 0,
-              actions: [
-                // Add option to open with external app
-                IconButton(
-                  icon: const Icon(Icons.share),
-                  tooltip: 'Share file',
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _openWithCompatibleApp(pdfFile);
-                  },
-                ),
-              ],
             ),
             body: PDFView(
               filePath: filePath,
@@ -599,26 +604,27 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
       MaterialPageRoute(
         builder: (context) => Scaffold(
           appBar: AppBar(
-            title: Text(fileName),
+            title: Text(
+              fileName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+            flexibleSpace: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
             backgroundColor: const Color(0xFF1976D2),
             elevation: 0,
             actions: [
               // Add option to open with external app
-              IconButton(
-                icon: const Icon(Icons.download),
-                tooltip: 'Download image',
-                onPressed: () async {
-                  Navigator.pop(context);
-                  // Download image and then open with compatible app
-                  try {
-                    final localFile = await _downloadFile(url, fileName);
-                    _openWithCompatibleApp(localFile);
-                  } catch (e) {
-                    _showErrorDialog(
-                        "Download Error", "Failed to download image: $e");
-                  }
-                },
-              ),
             ],
           ),
           body: Center(
@@ -720,11 +726,21 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        // Use the dynamic title
         title: Text(
           _selectedMaterialName,
           style: const TextStyle(
+            color: Colors.white,
             fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
         ),
         backgroundColor: const Color(0xFF1976D2),

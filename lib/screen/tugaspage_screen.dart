@@ -42,12 +42,23 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   void initState() {
     super.initState();
     _loadUserData();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this); // Changed to 3 tabs
 
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         setState(() {
-          currentTab = _tabController.index == 0 ? 'Semua' : 'Selesai';
+          // Updated tab logic for 3 tabs
+          switch (_tabController.index) {
+            case 0:
+              currentTab = 'Semua';
+              break;
+            case 1:
+              currentTab = 'Belum Dikerjakan';
+              break;
+            case 2:
+              currentTab = 'Selesai';
+              break;
+          }
         });
         _filterTasks();
       }
@@ -141,8 +152,23 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
             mapel.toLowerCase().contains(_searchQuery.toLowerCase()) ||
                 judul.toLowerCase().contains(_searchQuery.toLowerCase());
 
-        final statusMatch = currentTab == 'Semua' ||
-            (currentTab == 'Selesai' && task.status == 'Sudah Dikumpulkan');
+        // Updated filter logic for 3 tabs
+        bool statusMatch;
+        switch (currentTab) {
+          case 'Semua':
+            statusMatch = true; // Show all tasks
+            break;
+          case 'Belum Dikerjakan':
+            statusMatch = task.status?.toLowerCase() != 'submitted' &&
+                task.status?.toLowerCase() != 'sudah dikumpulkan';
+            break;
+          case 'Selesai':
+            statusMatch = task.status?.toLowerCase() == 'submitted' ||
+                task.status?.toLowerCase() == 'sudah dikumpulkan';
+            break;
+          default:
+            statusMatch = true;
+        }
 
         return searchMatch && statusMatch;
       }).toList();
@@ -183,6 +209,49 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
     }
   }
 
+  // Helper method to check if deadline is overdue
+  bool _isDeadlineOverdue(String deadlineStr) {
+    try {
+      DateTime deadline = DateTime.parse(deadlineStr);
+      DateTime now = DateTime.now();
+      return deadline.isBefore(now);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // Helper method to get appropriate empty state message
+  String _getEmptyStateMessage() {
+    if (_searchQuery.isNotEmpty) {
+      return 'Tidak ada tugas yang sesuai pencarian';
+    }
+
+    switch (currentTab) {
+      case 'Semua':
+        return 'Belum ada tugas';
+      case 'Belum Dikerjakan':
+        return 'Tidak ada tugas yang belum dikerjakan';
+      case 'Selesai':
+        return 'Belum ada tugas yang selesai';
+      default:
+        return 'Tidak ada tugas';
+    }
+  }
+
+  // Helper method to get appropriate empty state icon
+  IconData _getEmptyStateIcon() {
+    switch (currentTab) {
+      case 'Semua':
+        return Icons.assignment_late;
+      case 'Belum Dikerjakan':
+        return Icons.assignment_outlined;
+      case 'Selesai':
+        return Icons.check_circle_outline;
+      default:
+        return Icons.assignment_late;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -200,19 +269,13 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              currentTab == 'Semua'
-                                  ? Icons.assignment_late
-                                  : Icons.check_circle_outline,
+                              _getEmptyStateIcon(),
                               size: 80,
                               color: Colors.grey[400],
                             ),
                             SizedBox(height: 16),
                             Text(
-                              currentTab == 'Semua'
-                                  ? _searchQuery.isNotEmpty
-                                      ? 'Tidak ada tugas yang sesuai pencarian'
-                                      : 'Belum ada tugas'
-                                  : 'Belum ada tugas yang selesai',
+                              _getEmptyStateMessage(),
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey[600],
@@ -240,7 +303,8 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
 
                                 if (result == true) {
                                   await fetchTasks();
-                                  _tabController.animateTo(1);
+                                  _tabController.animateTo(
+                                      2); // Navigate to 'Selesai' tab
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content:
@@ -392,8 +456,10 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
         unselectedLabelColor: Colors.grey,
         indicatorColor: Color(0xFF1A237E),
         indicatorWeight: 3,
+        isScrollable: false,
         tabs: [
           Tab(icon: Icon(Icons.assignment), text: 'Semua'),
+          Tab(icon: Icon(Icons.assignment_outlined), text: 'Tertunda'),
           Tab(icon: Icon(Icons.check_circle), text: 'Selesai'),
         ],
       ),
@@ -401,63 +467,105 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   }
 
   Widget buildTaskCard(Tugas task) {
-    final bool isCompleted = task.status.toLowerCase() == 'submitted';
-    final Color statusColor = isCompleted ? Colors.green : Colors.red;
+    // Check completion status
+    final bool isCompleted = task.status?.toLowerCase() == 'submitted' ||
+        task.status?.toLowerCase() == 'sudah dikumpulkan';
+
+    // Check if deadline is overdue
+    final bool isOverdue = _isDeadlineOverdue(task.deadline ?? "");
+
+    // Determine status text, icon, and color based on completion and deadline
+    IconData statusIcon;
+    String statusText;
+    Color statusColor;
+
+    if (isCompleted) {
+      statusIcon = Icons.check_circle;
+      statusText = 'Selesai';
+      statusColor = Colors.green;
+    } else if (isOverdue) {
+      statusIcon = Icons.assignment_late;
+      statusText = 'Terlewat Deadline';
+      statusColor = Colors.red;
+    } else {
+      statusIcon = Icons.assignment_outlined;
+      statusText = 'Belum Dikerjakan';
+      statusColor = Colors.orange;
+    }
 
     return Card(
-      margin: EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      elevation: 3,
+      margin: EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: Colors.white,
+      elevation: 5,
+      shadowColor: Colors.grey.withOpacity(0.3),
       child: Padding(
-        padding: EdgeInsets.all(12),
+        padding: EdgeInsets.all(16),
         child: Row(
           children: [
+            // Warna vertikal di sisi kiri
             Container(
               width: 6,
-              height: 80,
+              height: 100,
               decoration: BoxDecoration(
                 color: _getSubjectColor(task.mataPelajaran ?? ""),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
-            SizedBox(width: 12),
+            SizedBox(width: 16),
+            // Isi teks
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Nama Mapel
                   Text(
                     task.mataPelajaran ?? "Tidak diketahui",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: Colors.grey[800],
+                    ),
                   ),
                   SizedBox(height: 6),
+                  // Judul tugas
                   Text(
                     task.judul ?? "Judul kosong",
-                    style: TextStyle(fontSize: 16),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  SizedBox(height: 6),
+                  SizedBox(height: 8),
+                  // Deadline with conditional color
                   Text(
                     'Deadline: ${_formatDeadline(task.deadline ?? "")}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: isOverdue && !isCompleted
+                          ? Colors.red
+                          : Colors.grey[600],
                       fontStyle: FontStyle.italic,
+                      fontWeight: isOverdue && !isCompleted
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                   ),
-                  SizedBox(height: 6),
+                  SizedBox(height: 10),
+                  // Status tugas
                   Row(
                     children: [
                       Icon(
-                        isCompleted
-                            ? Icons.check_circle
-                            : Icons.assignment_late,
-                        size: 16,
+                        statusIcon,
+                        size: 18,
                         color: statusColor,
                       ),
-                      SizedBox(width: 4),
+                      SizedBox(width: 6),
                       Text(
-                        'Status: ${task.statusText}',
+                        'Status: $statusText',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: statusColor,
@@ -465,12 +573,13 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                       ),
                     ],
                   ),
+                  // Jika ada nilai
                   if (task.score != null) ...[
-                    SizedBox(height: 6),
+                    SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.grade, size: 16, color: Colors.amber[800]),
-                        SizedBox(width: 4),
+                        Icon(Icons.grade, size: 18, color: Colors.amber[800]),
+                        SizedBox(width: 6),
                         Text(
                           'Nilai: ${task.score}',
                           style: TextStyle(
@@ -484,10 +593,11 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
                 ],
               ),
             ),
+            // Panah kanan
             Icon(
               Icons.chevron_right,
-              color: Colors.grey,
-            )
+              color: Colors.grey[400],
+            ),
           ],
         ),
       ),
