@@ -4,7 +4,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../model/announcement.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter/material.dart';
 
 class Announcementdetailpage extends StatefulWidget {
   final Announcement announcement;
@@ -25,6 +24,7 @@ class _PengumumanDetailPageState extends State<Announcementdetailpage> {
   void initState() {
     super.initState();
     _announcement = widget.announcement;
+    _fetchDetailedAnnouncement();
   }
 
   String _formatDate(String dateString) {
@@ -74,10 +74,10 @@ class _PengumumanDetailPageState extends State<Announcementdetailpage> {
         setState(() {
           _isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text("Gagal mengambil detail: ${response.statusCode}")),
-        );
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(
+        //       content: Text("Gagal mengambil detail: ${response.statusCode}")),
+        // );
       }
     } catch (e) {
       setState(() {
@@ -108,12 +108,13 @@ class _PengumumanDetailPageState extends State<Announcementdetailpage> {
         title: const Text(
           'Detail Pengumuman',
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
             color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w900, // Extra bold
+            letterSpacing: 0.5,
           ),
         ),
-        centerTitle: false,
+        centerTitle: true,
         backgroundColor: const Color(0xFF1976D2),
         elevation: 0,
         flexibleSpace: Container(
@@ -129,75 +130,142 @@ class _PengumumanDetailPageState extends State<Announcementdetailpage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Container(
-              color: Colors.white,
+              color: Colors.grey[100],
               child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _announcement.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: Color(0xFF1976D2),
+                padding: const EdgeInsets.only(
+                    left: 16, right: 16, top: 16, bottom: 240),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF1976D2).withOpacity(0.08),
+                        spreadRadius: 0,
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: const Color(0xFF1976D2).withOpacity(0.1),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Decorative top line element - EXACTLY same as card
+                        Container(
+                          height: 3,
+                          width: 60,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF1976D2), Color(0xFF64B5F6)],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
                             ),
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.calendar_today,
-                                size: 14,
-                                color: Color(0xFF64B5F6),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                _formatDate(_announcement.date),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _announcement.title,
                                 style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 17, // Exact match with card
+                                  color: Color(0xFF1E3A5F),
+                                  letterSpacing: 0.2,
+                                  height: 1.3,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
+                            ),
+                            Container(
+                              margin: const EdgeInsets.only(left: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF1976D2).withOpacity(0.85),
+                                    const Color(0xFF42A5F5).withOpacity(0.85),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF1976D2)
+                                        .withOpacity(0.2),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.calendar_today,
+                                      size: 12, color: Colors.white),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _formatDate(_announcement.date),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14), // Exact match with card
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 12), // Exact match with card
+                          decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.grey[100]!,
+                                width: 0.8,
+                              )),
+                          child: Html(
+                            data: _announcement.content,
+                            style: {
+                              "body": Style(
+                                fontSize:
+                                    FontSize(14.0), // Exact match with card
+                                lineHeight: LineHeight(1.5),
+                                margin: Margins.zero,
+                                color: Colors.grey[700],
+                              ),
+                              "a": Style(
+                                color: const Color(0xFF1976D2),
+                              ),
+                            },
+                            onLinkTap: (url, attributes, element) {
+                              if (url != null) {
+                                launchUrl(Uri.parse(url));
+                              }
+                            },
                           ),
-                          const SizedBox(height: 12),
-                          const Divider(
-                              height: 1,
-                              thickness: 1,
-                              color: Color(0xFFEEEEEE)),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 12), // Exact match with card
+                      ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      color: Colors.white,
-                      child: Html(
-                        data: _announcement.content,
-                        style: {
-                          "body": Style(
-                            fontSize: FontSize(15.0),
-                            lineHeight: LineHeight(1.5),
-                            margin: Margins.zero,
-                            padding: HtmlPaddings.only(bottom: 10000),
-                          ),
-                          "a": Style(
-                            color: const Color(0xFF1976D2),
-                          ),
-                        },
-                        onLinkTap: (url, attributes, element) {
-                          if (url != null) {
-                            launchUrl(Uri.parse(url));
-                          }
-                        },
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

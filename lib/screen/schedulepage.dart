@@ -505,69 +505,75 @@ class AnimatedCard extends StatelessWidget {
           top: Radius.circular(20),
         ),
       ),
+      isScrollControlled: true,
       builder: (context) {
-        return Container(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.book,
-                      color: color,
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        mapel.subjectName, // Changed from mapel.mataPelajaran
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      Text(
-                        mapel.teacherName, // Changed from mapel.guru
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                        ),
+                      child: Icon(
+                        Icons.book,
+                        color: color,
+                        size: 28,
                       ),
-                    ],
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-              ListTile(
-                leading: Icon(Icons.edit, color: Colors.blue),
-                title: Text('Lihat Tugas'),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Tambahkan aksi edit
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.assignment, color: Colors.green),
-                title: Text('Lihat Materi'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => MateriPage(mapel: mapel),
                     ),
-                  );
-                },
-              ),
-            ],
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            mapel.subjectName,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            mapel.teacherName,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 20),
+                Divider(thickness: 1),
+                // Menu Aksi
+                ListTile(
+                  leading: Icon(Icons.assignment, color: Colors.green),
+                  title: Text('Lihat Materi'),
+                  trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MateriPage(mapel: mapel),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         );
       },

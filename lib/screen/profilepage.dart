@@ -552,14 +552,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        centerTitle: true,
         title: Text(
           "Profil Saya",
           style: TextStyle(
             fontWeight: FontWeight.bold,
+            fontSize: 25,
             color: Colors.white,
           ),
         ),
@@ -650,21 +648,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       SizedBox(height: 20),
-                      Text(
-                        nama,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        email,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.person, color: Colors.white, size: 22),
+                          SizedBox(width: 8),
+                          Text(
+                            nama,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -679,7 +676,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Informasi Akademik",
+                    "Informasi Saya",
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,

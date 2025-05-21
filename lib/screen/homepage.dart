@@ -609,7 +609,7 @@ class HomePageState extends State<HomePage> {
                   Icon(
                     course['icon'],
                     color: course['color'],
-                    size: 28, // Mengurangi ukuran ikon
+                    size: 30, // Mengurangi ukuran ikon
                   ),
                   Container(
                     padding: const EdgeInsets.all(3), // Mengurangi padding
@@ -625,26 +625,26 @@ class HomePageState extends State<HomePage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8), // Mengurangi jarak
+              const SizedBox(height: 12), // Mengurangi jarak
 
               // Subject name
               Text(
                 course['title'],
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 14, // Mengurangi ukuran font lebih lanjut
+                  fontSize: 17, // Mengurangi ukuran font lebih lanjut
                 ),
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4), // Mengurangi jarak
+              const SizedBox(height: 6), // Mengurangi jarak
 
               // Teacher name
               Row(
                 children: [
                   Icon(
                     Icons.person,
-                    size: 12, // Mengurangi ukuran ikon
+                    size: 16, // Mengurangi ukuran ikon
                     color: Colors.black.withOpacity(0.6),
                   ),
                   const SizedBox(width: 3), // Mengurangi jarak
@@ -653,7 +653,7 @@ class HomePageState extends State<HomePage> {
                       course['teacher'],
                       style: TextStyle(
                         color: Colors.black.withOpacity(0.7),
-                        fontSize: 11, // Mengurangi ukuran font lebih lanjut
+                        fontSize: 14, // Mengurangi ukuran font lebih lanjut
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -677,7 +677,7 @@ class HomePageState extends State<HomePage> {
                     // Menggunakan ikon jam biasa yang pasti tersedia
                     Icon(
                       Icons.access_time,
-                      size: 14,
+                      size: 16,
                       color: course['color'],
                     ),
                     const SizedBox(width: 4),
@@ -685,7 +685,7 @@ class HomePageState extends State<HomePage> {
                       child: Text(
                         "${course['timeStart']} - ${course['timeEnd']}",
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: course['color'],
                         ),
@@ -708,21 +708,14 @@ class HomePageState extends State<HomePage> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text(
-          'E-Learning SMK',
+          'E-SATURASI',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 20,
+            fontSize: 22,
             color: Colors.white, // Warna teks agar kontras
           ),
         ),
         actions: [
-          IconButton(
-            icon:
-                const Icon(Icons.notifications, color: Colors.white, size: 28),
-            onPressed: () {
-              // Tambahkan navigasi ke halaman notifikasi
-            },
-          ),
           const SizedBox(width: 12),
         ],
         flexibleSpace: Container(
@@ -839,7 +832,7 @@ class HomePageState extends State<HomePage> {
                   const Text(
                     'Ringkasan Aktivitas',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -856,9 +849,13 @@ class HomePageState extends State<HomePage> {
                           'Tugas Tertunda',
                           Colors.orange),
                       _buildActivityCard(
-                          Icons.book, '4', 'Tugas Terlambat', Colors.green),
+                          Icons.book, '0', 'Tugas Terlambat', Colors.green),
                       _buildActivityCard(
-                          Icons.quiz, '2', 'Ujian Mendatang', Colors.red),
+                        Icons.campaign,
+                        _announcements.length.toString(),
+                        'Pengumuman',
+                        Colors.red,
+                      ),
                     ],
                   ),
                 ],
@@ -904,7 +901,7 @@ class HomePageState extends State<HomePage> {
                             ),
                           ),
                         ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
 
                   // Tugas Tertunda Section
                   Row(
@@ -915,16 +912,6 @@ class HomePageState extends State<HomePage> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          // Navigasi ke halaman semua tugas tertunda
-                        },
-                        icon: const Icon(Icons.arrow_forward),
-                        label: const Text('Lihat Semua'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF1976D2),
                         ),
                       ),
                     ],
@@ -957,7 +944,7 @@ class HomePageState extends State<HomePage> {
                               },
                             ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 0),
 
                   // Announcements Section
                   Row(
@@ -987,7 +974,7 @@ class HomePageState extends State<HomePage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   _isLoading
                       ? const Center(
                           child:
@@ -1008,7 +995,7 @@ class HomePageState extends State<HomePage> {
                                     _announcements[index]);
                               },
                             ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 15),
                 ],
               ),
             ),
@@ -1133,110 +1120,169 @@ class HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.15),
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color: const Color(0xFF1976D2).withOpacity(0.08),
+            spreadRadius: 0,
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
+        border: Border.all(
+          color: const Color(0xFF1976D2).withOpacity(0.1),
+          width: 0.8,
+        ),
       ),
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: assignment['isUrgent'] == true
-                ? Colors.red.withOpacity(0.1)
-                : Colors.blue.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            Icons.assignment,
-            color: assignment['isUrgent'] == true
-                ? Colors.red
-                : const Color(0xFF1976D2),
-            size: 24,
-          ),
-        ),
-        title: Text(
-          assignment['course'] ?? 'Tugas Tanpa Judul',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        subtitle: Column(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 5),
-            Text(
-              assignment['title'] ?? 'Tidak Ada Mata Pelajaran',
-              style: TextStyle(
-                color: Colors.grey[700],
-                fontSize: 14,
+            // Decorative top line element
+            Container(
+              height: 3,
+              width: 60,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    assignment['isUrgent'] == true
+                        ? Colors.red
+                        : const Color(0xFF1976D2),
+                    assignment['isUrgent'] == true
+                        ? Colors.redAccent
+                        : const Color(0xFF64B5F6),
+                  ],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
-            const SizedBox(height: 5),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(
-                  Icons.access_time,
-                  size: 14,
-                  color:
-                      assignment['isUrgent'] == true ? Colors.red : Colors.grey,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        assignment['course'] ?? 'Tugas Tanpa Judul',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 17,
+                          color: Color(0xFF1E3A5F),
+                          letterSpacing: 0.2,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        assignment['title'] ?? 'Tidak Ada Mata Pelajaran',
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 5),
-                Text(
-                  assignment['deadline_formatted'] ??
-                      assignment['deadline'] ??
-                      'Tidak Ada Deadline',
-                  style: TextStyle(
-                    color: assignment['isUrgent'] == true
-                        ? Colors.red
-                        : Colors.grey,
-                    fontWeight: assignment['isUrgent'] == true
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    fontSize: 13,
+                Container(
+                  margin: const EdgeInsets.only(left: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: assignment['isUrgent'] == true
+                          ? [
+                              Colors.red.withOpacity(0.85),
+                              Colors.redAccent.withOpacity(0.85),
+                            ]
+                          : [
+                              const Color(0xFF1976D2).withOpacity(0.85),
+                              const Color(0xFF42A5F5).withOpacity(0.85),
+                            ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: assignment['isUrgent'] == true
+                            ? Colors.red.withOpacity(0.2)
+                            : const Color(0xFF1976D2).withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: assignment['isUrgent'] == true
+                          ? Colors.red.withOpacity(0.1)
+                          : Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.assignment,
+                      color: assignment['isUrgent'] == true
+                          ? Colors.white
+                          : Colors.white,
+                      size: 22,
+                    ),
                   ),
                 ),
               ],
             ),
-          ],
-        ),
-        trailing: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF1976D2).withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: IconButton(
-            icon: const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Color(0xFF1976D2),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.grey[100]!,
+                    width: 0.8,
+                  )),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.access_time,
+                    size: 16,
+                    color: assignment['isUrgent'] == true
+                        ? Colors.red
+                        : Colors.grey[600],
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    assignment['deadline_formatted'] ??
+                        assignment['deadline'] ??
+                        'Tidak Ada Deadline',
+                    style: TextStyle(
+                      color: assignment['isUrgent'] == true
+                          ? Colors.red
+                          : Colors.grey[700],
+                      fontWeight: assignment['isUrgent'] == true
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            onPressed: () {
-              // Navigate to task detail page
-              // You might want to implement this navigation
-            },
-          ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildAnnouncementCard(Announcement announcement) {
-    // Format the date here
     String formattedDate = _formatDate(announcement.date);
-
-    // Extract plain text from content if it contains HTML
     String plainContent = _extractTextFromHtml(announcement.content);
-
-    // Limit content to 100 characters
     String limitedContent = _limitToChars(plainContent, 115);
-
-    // Check if content was truncatedn
     bool isTruncated = plainContent != limitedContent;
 
     return Container(
@@ -1246,18 +1292,36 @@ class HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.15),
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color: const Color(0xFF1976D2).withOpacity(0.08),
+            spreadRadius: 0,
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
+        border: Border.all(
+          color: const Color(0xFF1976D2).withOpacity(0.1),
+          width: 0.8,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Decorative top line element
+            Container(
+              height: 3,
+              width: 60,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1976D2), Color(0xFF64B5F6)],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1266,35 +1330,73 @@ class HomePageState extends State<HomePage> {
                     announcement.title,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 17,
+                      color: Color(0xFF1E3A5F),
+                      letterSpacing: 0.2,
+                      height: 1.3,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Container(
+                  margin: const EdgeInsets.only(left: 8),
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1976D2).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    formattedDate,
-                    style: const TextStyle(
-                      color: Color(0xFF1976D2),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF1976D2).withOpacity(0.85),
+                        const Color(0xFF42A5F5).withOpacity(0.85),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF1976D2).withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.calendar_today,
+                          size: 12, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text(
+                        formattedDate,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            // Display plain text without HTML formatting, limited to 100 characters
-            Text(
-              limitedContent + (isTruncated ? "..." : ""),
-              style: TextStyle(
-                color: Colors.grey[800],
-                height: 1.4,
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.grey[100]!,
+                    width: 0.8,
+                  )),
+              child: Text(
+                limitedContent + (isTruncated ? "..." : ""),
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  height: 1.5,
+                  fontSize: 14,
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -1311,11 +1413,19 @@ class HomePageState extends State<HomePage> {
                   );
                 },
                 icon: const Icon(Icons.arrow_forward, size: 16),
-                label: const Text('Baca Selengkapnya'),
+                label: const Text(
+                  'Baca Selengkapnya',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF1976D2),
+                  backgroundColor: const Color(0xFF1976D2).withOpacity(0.08),
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  elevation: 0,
                 ),
               ),
             ),

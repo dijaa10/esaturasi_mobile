@@ -129,7 +129,7 @@ class _MateriPageState extends State<MateriPage>
       } else {
         setState(() {
           _isLoading = false;
-          _errorMessage = "Gagal mengambil data bab: ${response.statusCode}";
+          _errorMessage = "Tidak Ada Materi Yang Tersedia";
         });
       }
     } catch (e) {
@@ -390,7 +390,7 @@ class _MateriPageState extends State<MateriPage>
             ),
             SizedBox(height: 24),
             Text(
-              'Oops! Terjadi Kesalahan',
+              'Perhatian!',
               style: GoogleFonts.poppins(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
@@ -406,27 +406,6 @@ class _MateriPageState extends State<MateriPage>
                 color: textColor.withOpacity(0.7),
               ),
               textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _fetchSlugs,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.refresh),
-                  SizedBox(width: 8),
-                  Text('Coba Lagi'),
-                ],
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accentColor,
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
             ),
           ],
         ),
@@ -468,7 +447,7 @@ class _MateriPageState extends State<MateriPage>
             ),
             SizedBox(height: 24),
             Text(
-              'Tidak ada materi tersedia',
+              'Tidak ada materi yang tersedia',
               style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -701,9 +680,7 @@ class _MateriPageState extends State<MateriPage>
           padding: EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(24),
-            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.1),
@@ -730,6 +707,7 @@ class _MateriPageState extends State<MateriPage>
                   ),
                 ),
               ),
+
               // Title and Icon
               Row(
                 children: [
@@ -771,8 +749,10 @@ class _MateriPageState extends State<MateriPage>
                   ),
                 ],
               ),
+
               SizedBox(height: 24),
-              // Description
+
+              // New Description
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -780,68 +760,41 @@ class _MateriPageState extends State<MateriPage>
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  'Materi ini mencakup konsep-konsep penting dalam pembelajaran. Anda dapat melihat atau mengunduh untuk akses offline.',
+                  'Silakan buka materi ini untuk melihat pembelajaran lebih lanjut!',
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     color: textColor.withOpacity(0.8),
                   ),
                 ),
               ),
+
               SizedBox(height: 24),
-              // Action buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: Icon(Icons.library_books_rounded),
-                      label: Text('Lihat Materi'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: themeColor,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DetailMateriPage(slug: slug),
-                          ),
-                        );
-                      },
+
+              // Only one action button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: Icon(Icons.library_books_rounded),
+                  label: Text('Lihat Materi'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: themeColor,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    elevation: 0,
                   ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: Icon(Icons.download_rounded),
-                      label: Text('Unduh Materi'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: themeColor,
-                        side: BorderSide(color: themeColor),
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DetailMateriPage(slug: slug),
                       ),
-                      onPressed: () {
-                        // Implement download functionality
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Mengunduh materi...'),
-                            behavior: SnackBarBehavior.floating,
-                            backgroundColor: accentColor,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
             ],
           ),
