@@ -65,7 +65,7 @@ class _DetailTugasPageState extends State<DetailTugasPage>
       });
     } else if (mounted) {
       setState(() {
-        _status = "Status tidak tersedia";
+        _status = "Belum Dikerjakan";
       });
     }
   }
@@ -307,7 +307,7 @@ class _DetailTugasPageState extends State<DetailTugasPage>
             await taskService.getSubmissionStatus(widget.task.id.toString());
         setState(() {
           _selectedFile = null;
-          _status = statusData?.statusText ?? "Status tidak tersedia";
+          _status = statusData?.statusText ?? "Belum Dikerjakan";
         });
 
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
