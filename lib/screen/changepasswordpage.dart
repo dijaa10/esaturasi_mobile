@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
 import '../loginpage.dart';
 
 class ChangePasswordPage extends StatefulWidget {
@@ -22,11 +23,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       TextEditingController();
 
   // Premium UI colors
-  final Color primaryColor = Color(0xFF1976D2); // Deep Blue
-  final Color accentColor = Color(0xFF64B5F6); // Light Blue
-  final Color bgColor = Color(0xFFF8F9FA); // Light Gray background
+  final Color primaryColor = Color(0xFF1976D2);
+  final Color accentColor = Color(0xFF64B5F6);
+  final Color bgColor = Color(0xFFF8F9FA);
   final Color cardColor = Colors.white;
-  final Color textColor = Color(0xFF2D3142); // Dark text
+  final Color textColor = Color(0xFF2D3142);
 
   @override
   void dispose() {
@@ -59,6 +60,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
+      print('Token: $token');
+
       if (token == null || token.isEmpty) {
         _showCustomSnackBar('Token tidak ditemukan. Silakan login ulang.',
             isSuccess: false);
@@ -68,53 +71,146 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         return;
       }
 
-      final response = await http.post(
+      final requestBody = {
+        'current_password': oldPassword,
+        'new_password': newPassword,
+        'new_password_confirmation': confirmPassword,
+      };
+
+      print('Request body: $requestBody');
+      print('Making request to: https://esaturasi.my.id/api/change-password');
+
+      final response = await http
+          .post(
         Uri.parse('https://esaturasi.my.id/api/change-password'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode({
-          'current_password': oldPassword,
-          'new_password': newPassword,
-          'new_password_confirmation': confirmPassword,
-        }),
+        body: jsonEncode(requestBody),
+      )
+          .timeout(
+        Duration(seconds: 30), // Add timeout
+        onTimeout: () {
+          throw Exception(
+              'Request timeout - Server tidak merespons dalam 30 detik');
+        },
       );
 
+      print('Response status: ${response.statusCode}');
+      print('Response headers: ${response.headers}');
+      print('Response body: ${response.body}');
+
+      // Check if response body is empty
+      if (response.body.isEmpty) {
+        _showCustomSnackBar('Server mengembalikan respons kosong',
+            isSuccess: false);
+        return;
+      }
+
+      // Try to parse JSON response
+      Map<String, dynamic> responseData;
+      try {
+        responseData = jsonDecode(response.body);
+      } catch (e) {
+        print('JSON parsing error: $e');
+        _showCustomSnackBar(
+            'Format respons server tidak valid: ${response.body}',
+            isSuccess: false);
+        return;
+      }
+
       if (response.statusCode == 200) {
-        // Bersihkan input field
-        _oldPasswordController.clear();
-        _newPasswordController.clear();
-        _confirmPasswordController.clear();
+        if (responseData['success'] == true) {
+          // Clear input fields
+          _oldPasswordController.clear();
+          _newPasswordController.clear();
+          _confirmPasswordController.clear();
 
-        // Hapus token agar wajib login ulang
-        await prefs.remove('token');
+          // Remove token to force re-login
+          await prefs.remove('token');
 
-        // Tampilkan dialog sukses dengan style baru
-        showSuccessDialog();
-      } else {
-        final Map<String, dynamic> responseData = jsonDecode(response.body);
-        String errorMessage =
-            responseData['message'] ?? 'Gagal mengubah password.';
+          // Show success dialog
+          showSuccessDialog();
+        } else {
+          _showCustomSnackBar(
+              responseData['message'] ?? 'Gagal mengubah password.',
+              isSuccess: false);
+        }
+      } else if (response.statusCode == 422) {
+        // Validation error
+        String errorMessage = 'Terjadi kesalahan validasi.';
 
         if (responseData.containsKey('errors')) {
           final errors = responseData['errors'];
-          if (errors.containsKey('current_password')) {
-            errorMessage = errors['current_password'][0];
-          } else if (errors.containsKey('new_password')) {
-            errorMessage = errors['new_password'][0];
+          if (errors is Map) {
+            String allErrors = '';
+            errors.forEach((key, value) {
+              if (value is List && value.isNotEmpty) {
+                allErrors += value[0].toString() + '\n';
+              }
+            });
+            if (allErrors.isNotEmpty) {
+              errorMessage = allErrors.trim();
+            }
+          }
+        } else if (responseData.containsKey('message')) {
+          errorMessage = responseData['message'];
+        }
+
+        _showCustomSnackBar(errorMessage, isSuccess: false);
+      } else if (response.statusCode == 401) {
+        _showCustomSnackBar('Token tidak valid. Silakan login ulang.',
+            isSuccess: false);
+        await prefs.remove('token');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => LoginPage()),
+        );
+      } else if (response.statusCode == 400) {
+        // Handle specific error from backend
+        String errorMessage = responseData['message'] ?? 'Terjadi kesalahan.';
+
+        if (responseData.containsKey('errors')) {
+          final errors = responseData['errors'];
+          if (errors is Map) {
+            if (errors.containsKey('current_password')) {
+              errorMessage = errors['current_password'][0];
+            } else if (errors.containsKey('new_password')) {
+              errorMessage = errors['new_password'][0];
+            }
           }
         }
 
         _showCustomSnackBar(errorMessage, isSuccess: false);
+      } else {
+        // Handle other status codes
+        String errorMessage = responseData['message'] ??
+            'Gagal mengubah password. Status: ${response.statusCode}';
+        _showCustomSnackBar(errorMessage, isSuccess: false);
       }
+    } on SocketException catch (e) {
+      print('Network error: $e');
+      _showCustomSnackBar(
+          'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+          isSuccess: false);
+    } on HttpException catch (e) {
+      print('HTTP error: $e');
+      _showCustomSnackBar('Terjadi kesalahan HTTP: $e', isSuccess: false);
+    } on FormatException catch (e) {
+      print('Format error: $e');
+      _showCustomSnackBar('Format data tidak valid: $e', isSuccess: false);
     } catch (e) {
+      print('Unexpected error: $e');
+      print('Error type: ${e.runtimeType}');
       _showCustomSnackBar('Terjadi kesalahan: $e', isSuccess: false);
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -187,6 +283,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }
 
   void _showCustomSnackBar(String message, {bool isSuccess = true}) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(
