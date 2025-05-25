@@ -11,6 +11,7 @@ import '../model/slug.dart';
 import '../model/subjectmatter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 class DetailMateriPage extends StatefulWidget {
   final Slug slug;
@@ -214,6 +215,196 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
     }
   }
 
+  Future<String> _getDocumentsPath() async {
+    if (Platform.isAndroid) {
+      // Untuk Android, gunakan Documents directory
+      return '/storage/emulated/0/Documents';
+    } else if (Platform.isIOS) {
+      // Untuk iOS, gunakan Documents directory
+      final directory = await getApplicationDocumentsDirectory();
+      return directory.path;
+    }
+
+    // Fallback ke application documents directory
+    final directory = await getApplicationDocumentsDirectory();
+    return directory.path;
+  }
+
+// 3. Tambahkan method untuk request permission storage
+  Future<bool> _requestStoragePermission() async {
+    if (Platform.isAndroid) {
+      final deviceInfo = DeviceInfoPlugin();
+      final androidInfo = await deviceInfo.androidInfo;
+
+      if (androidInfo.version.sdkInt >= 33) {
+        // Android 13+ - tidak perlu permission untuk menulis ke Downloads
+        return true;
+      } else if (androidInfo.version.sdkInt >= 30) {
+        // Android 11-12 - gunakan MANAGE_EXTERNAL_STORAGE
+        var status = await Permission.manageExternalStorage.status;
+        if (status != PermissionStatus.granted) {
+          status = await Permission.manageExternalStorage.request();
+        }
+        return status == PermissionStatus.granted;
+      } else {
+        // Android 10 ke bawah - gunakan WRITE_EXTERNAL_STORAGE
+        var status = await Permission.storage.status;
+        if (status != PermissionStatus.granted) {
+          status = await Permission.storage.request();
+        }
+        return status == PermissionStatus.granted;
+      }
+    }
+    return true; // iOS tidak perlu permission khusus
+  }
+
+// 4. Tambahkan method untuk download ke Documents folder
+  Future<File> _downloadToDocuments(String url, String fileName) async {
+    try {
+      // Request permission terlebih dahulu
+      bool hasPermission = await _requestStoragePermission();
+      if (!hasPermission) {
+        throw Exception("Storage permission denied");
+      }
+
+      // Get Documents path
+      final documentsPath = await _getDocumentsPath();
+
+      // Pastikan folder Documents ada
+      final documentsDir = Directory(documentsPath);
+      if (!await documentsDir.exists()) {
+        await documentsDir.create(recursive: true);
+      }
+
+      final filePath = '$documentsPath/$fileName';
+      final file = File(filePath);
+
+      // Check if file already exists
+      if (await file.exists()) {
+        // Buat nama file unik jika sudah ada
+        final fileNameWithoutExt = fileName.split('.').first;
+        final extension = fileName.split('.').last;
+        int counter = 1;
+
+        while (await File(
+                '$documentsPath/${fileNameWithoutExt}_$counter.$extension')
+            .exists()) {
+          counter++;
+        }
+
+        final uniqueFileName = '${fileNameWithoutExt}_$counter.$extension';
+        final uniqueFilePath = '$documentsPath/$uniqueFileName';
+
+        return await _performDownload(url, uniqueFilePath, uniqueFileName);
+      }
+
+      return await _performDownload(url, filePath, fileName);
+    } catch (e) {
+      print("Error downloading to Documents: $e");
+      throw Exception("Failed to download to Documents folder: $e");
+    }
+  }
+
+// 5. Method helper untuk melakukan download
+  Future<File> _performDownload(
+      String url, String filePath, String fileName) async {
+    // Show download progress dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 20),
+                Text('Mengunduh $fileName...'),
+                const SizedBox(height: 10),
+                const Text(
+                  'File akan tersimpan di folder Download',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      // Clear previous interceptors
+      _dio.interceptors.clear();
+
+      // Configure timeout settings
+      _dio.options.connectTimeout = 30000;
+      _dio.options.receiveTimeout = 30000;
+      _dio.options.sendTimeout = 30000;
+
+      // Perform download
+      final response = await _dio.download(
+        url,
+        filePath,
+        options: Options(
+          headers: {
+            "Accept": "*/*",
+            "User-Agent": "Flutter/1.0",
+            "Connection": "keep-alive",
+          },
+          followRedirects: true,
+          validateStatus: (status) => status != null && status < 500,
+          receiveTimeout: 60000,
+        ),
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            print(
+                "Download progress: ${(received / total * 100).toStringAsFixed(0)}%");
+          }
+        },
+      );
+
+      // Close dialog
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      if (response.statusCode != null &&
+          response.statusCode! >= 200 &&
+          response.statusCode! < 300) {
+        final file = File(filePath);
+        if (await file.exists() && await file.length() > 0) {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('File berhasil diunduh: $fileName'),
+              backgroundColor: Colors.green,
+              action: SnackBarAction(
+                label: 'Buka',
+                textColor: Colors.white,
+                onPressed: () async {
+                  await _openWithCompatibleApp(file);
+                },
+              ),
+            ),
+          );
+          return file;
+        } else {
+          throw Exception("Downloaded file is empty");
+        }
+      } else {
+        throw Exception("Server returned status code: ${response.statusCode}");
+      }
+    } catch (e) {
+      // Close dialog in case of error
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      throw e;
+    }
+  }
+
   Future<void> _openFile(Subjectmatter materi) async {
     if (materi.filePath.isEmpty) {
       _showErrorDialog('File path is missing',
@@ -290,25 +481,25 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         case 'xlsx':
         case 'mp4':
         case 'mp3':
+        case 'wav':
+        case 'avi':
+        case 'mov':
           try {
-            // For Office documents, also download locally first
-            final localFile = await _downloadFile(
+            // Download langsung ke folder Documents
+            final localFile = await _downloadToDocuments(
                 fileUrl, '${materi.title}.${fileExtension}');
             setState(() {
               _isLoading = false;
             });
 
-            if (await localFile.exists() && await localFile.length() > 0) {
-              await _openWithCompatibleApp(localFile);
-            } else {
-              throw Exception("Document file is empty or corrupt");
-            }
+            // Otomatis buka file setelah download selesai
+            await _openWithCompatibleApp(localFile);
           } catch (e) {
             setState(() {
               _isLoading = false;
             });
-            _showErrorDialog('Error Downloading Document',
-                'Failed to download the document. Please check your internet connection and try again.\n\nDetails: ${e.toString()}');
+            _showErrorDialog('Error Mengunduh File',
+                'Gagal mengunduh file. Periksa koneksi internet dan coba lagi.\n\nDetail: ${e.toString()}');
           }
           break;
 

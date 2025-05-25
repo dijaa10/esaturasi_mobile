@@ -35,6 +35,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter  
   permission_handler: ^12.0.0+1
+  device_info_plus: ^9.1.0
 
 dev_dependencies:
   flutter_test:
@@ -51,14 +52,4 @@ flutter_icons:
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/logo.png
-    - assets/images/artikel/wisuda.png
-    - assets/images/artikel/kunjungan.png
-    - assets/images/artikel/sepakbola.png
-    - assets/images/ic_lonceng.png
-    - assets/images/ic_jamnew.png
-    - assets/images/ic_tugasnew.png
-    - assets/images/ic_mapelnew.png
-    - assets/images/ic_kalendernew.png
-    - assets/images/splashscreen.png
     - assets/images/logosmk.png
