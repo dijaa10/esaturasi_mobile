@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart'; // Tambahkan ini
 import 'dart:io';
 
-Future<void> downloadImage(String imageUrl, BuildContext context) async {
+Future<void> downloadAndShareImage(
+    String imageUrl, BuildContext context) async {
   try {
     final response = await http.get(Uri.parse(imageUrl));
     if (response.statusCode == 200) {
@@ -13,9 +15,8 @@ Future<void> downloadImage(String imageUrl, BuildContext context) async {
       final file = File(filePath);
       await file.writeAsBytes(response.bodyBytes);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gambar berhasil diunduh ke $filePath')),
-      );
+      // Langsung bagikan file menggunakan share_plus
+      await Share.shareXFiles([XFile(file.path)], text: 'Lihat gambar ini!');
     } else {
       throw Exception('Gagal mengunduh gambar');
     }
@@ -50,12 +51,12 @@ void showAttachmentDialog(BuildContext context, String imageUrl) {
                 ),
                 child: IconButton(
                   icon: Icon(
-                    Icons.download,
+                    Icons.share, // Ganti ikon dari download ke share
                     color: Colors.white,
                     size: 28,
                   ),
                   onPressed: () async {
-                    await downloadImage(imageUrl, context);
+                    await downloadAndShareImage(imageUrl, context);
                   },
                 ),
               ),
