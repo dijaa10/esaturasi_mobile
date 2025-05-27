@@ -621,6 +621,32 @@ class _DetailTugasPageState extends State<DetailTugasPage>
                                     widget.task.deadline ?? ""),
                               ),
                               Divider(height: 24, thickness: 1),
+                              // TAMBAHAN: Field Updated At
+                              if (widget.task.updatedAt != null &&
+                                  widget.task.updatedAt!.isNotEmpty)
+                                _buildInfoRow(
+                                  Icons.update,
+                                  "Dikumpulkan Pada",
+                                  _formatDateTime(widget.task.updatedAt!),
+                                  subjectColor,
+                                  valueColor: Colors.grey[700],
+                                ),
+                              if (widget.task.updatedAt != null &&
+                                  widget.task.updatedAt!.isNotEmpty)
+                                Divider(height: 24, thickness: 1),
+                              // Field Submitted At jika ada
+                              if (widget.task.submittedAt != null &&
+                                  widget.task.submittedAt!.isNotEmpty)
+                                _buildInfoRow(
+                                  Icons.send,
+                                  "Dikumpulkan Pada",
+                                  _formatDateTime(widget.task.submittedAt!),
+                                  subjectColor,
+                                  valueColor: Colors.green[700],
+                                ),
+                              if (widget.task.submittedAt != null &&
+                                  widget.task.submittedAt!.isNotEmpty)
+                                Divider(height: 24, thickness: 1),
                               GestureDetector(
                                 onTap: () {
                                   HapticFeedback.selectionClick();
@@ -1133,6 +1159,20 @@ class _DetailTugasPageState extends State<DetailTugasPage>
       return '${dateFormat.format(deadline)}, ${timeFormat.format(deadline)}';
     } catch (_) {
       return 'Tanggal tidak valid';
+    }
+  }
+
+  String _formatDateTime(String? dateTimeStr) {
+    if (dateTimeStr == null || dateTimeStr.isEmpty) {
+      return 'Tanggal tidak tersedia';
+    }
+
+    try {
+      DateTime dateTime = DateTime.parse(dateTimeStr);
+      final DateFormat formatter = DateFormat('dd MMM yyyy, HH:mm');
+      return formatter.format(dateTime);
+    } catch (e) {
+      return 'Format tanggal tidak valid';
     }
   }
 

@@ -1,0 +1,2 @@
+D:/esaturasi_mobile/android/app/.cxx/RelWithDebInfo/1n496g1y/x86_64/CMakeFiles/edit_cache.dir
+D:/esaturasi_mobile/android/app/.cxx/RelWithDebInfo/1n496g1y/x86_64/CMakeFiles/rebuild_cache.dir

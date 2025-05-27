@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart'; // Tambahkan ini
+import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 
 Future<void> downloadAndShareImage(
@@ -51,7 +51,7 @@ void showAttachmentDialog(BuildContext context, String imageUrl) {
                 ),
                 child: IconButton(
                   icon: Icon(
-                    Icons.share, // Ganti ikon dari download ke share
+                    Icons.share,
                     color: Colors.white,
                     size: 28,
                   ),
