@@ -23,7 +23,7 @@ class _TugasSiswaPageState extends State<TugasSiswaPage>
   String namaKelas = "Memuat...";
   String fotoProfil = "";
   String currentTab = 'Semua';
-  final String baseUrl = "https://esaturasi.my.id/";
+  final String baseUrl = "http://10.0.2.2:8000/";
   bool _isLoading = true;
 
   final Map<String, Color> _subjectColors = {};

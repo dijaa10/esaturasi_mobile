@@ -30,8 +30,7 @@ class _LoginPageState extends State<LoginPage>
       return;
     }
 
-    const String url = "https://esaturasi.my.id/api/login";
-
+    const String url = "http://10.0.2.2:8000/api/login";
     setState(() {
       _isLoading = true;
     });

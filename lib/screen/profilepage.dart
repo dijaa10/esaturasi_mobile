@@ -18,7 +18,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String namaKelas = "Memuat...";
   String namaJurusan = "Memuat...";
   String fotoProfil = "";
-  final String baseUrl = "https://esaturasi.my.id/";
+  final String baseUrl = "http://10.0.2.2:8000/";
   final ImagePicker _picker = ImagePicker();
 
   // Premium UI colors
@@ -267,7 +267,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
 
       final response = await http.delete(
-        Uri.parse("https://esaturasi.my.id/api/delete-profile-photo"),
+        Uri.parse("${baseUrl}api/delete-profile-photo"),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
