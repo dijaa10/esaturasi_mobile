@@ -1,0 +1,2 @@
+E:/esaturasi_mobile/android/app/.cxx/Debug/3d4r674k/x86_64/CMakeFiles/edit_cache.dir
+E:/esaturasi_mobile/android/app/.cxx/Debug/3d4r674k/x86_64/CMakeFiles/rebuild_cache.dir

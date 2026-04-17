@@ -6,6 +6,7 @@ import '../model/schedule1.dart'; // Changed from jadwal.dart to schedule.dart
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'subjectmatterpage.dart';
+import 'pretest_page.dart';
 
 class MapelPage extends StatefulWidget {
   @override
@@ -568,6 +569,21 @@ class AnimatedCard extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => MateriPage(mapel: mapel),
+                      ),
+                    );
+                  },
+                ),
+                // Button Pretest
+                ListTile(
+                  leading: Icon(Icons.quiz, color: Colors.orange),
+                  title: Text('Kerjakan Pretest'),
+                  trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    print("Tombol Pretest ditekan!");
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PretestPage(mapel: mapel),
                       ),
                     );
                   },

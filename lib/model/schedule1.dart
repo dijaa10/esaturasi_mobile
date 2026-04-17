@@ -9,6 +9,7 @@ class Schedule {
   final int archiveId;
   final String createdAt;
   final String updatedAt;
+  final int slugId;
 
   // Relasi dengan model lain - sesuai dengan Laravel model
   final String subjectName; // dari relasi Subject (mata pelajaran)
@@ -37,6 +38,7 @@ class Schedule {
     required this.scheduleData,
     required this.hari,
     required this.jamMulai,
+    required this.slugId,
     required this.jamSelesai,
   });
 
@@ -176,6 +178,7 @@ class Schedule {
       classroomId: int.tryParse(json['classroom_id'].toString()) ?? 0,
       subjectId: int.tryParse(json['subject_id'].toString()) ?? 0,
       teacherId: int.tryParse(json['teacher_id'].toString()) ?? 0,
+      slugId: int.tryParse(json['slug_id']?.toString() ?? '0') ?? 0,
       archiveId: int.tryParse(json['archive_id'].toString()) ?? 0,
       createdAt: json['created_at']?.toString() ?? '',
       updatedAt: json['updated_at']?.toString() ?? '',
@@ -211,6 +214,7 @@ class Schedule {
             updatedAt: this.updatedAt,
             subjectName: this.subjectName,
             classroomName: this.classroomName,
+            slugId: this.slugId,
             teacherName: this.teacherName,
             scheduleData: this.scheduleData,
             hari: hari,
