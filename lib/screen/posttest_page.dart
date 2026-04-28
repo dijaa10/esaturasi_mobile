@@ -3,51 +3,49 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../model/schedule1.dart';
-import '../model/pretest_model.dart';
+import '../model/posttest_model.dart';
 
-class PretestPage extends StatefulWidget {
+class PosttestPage extends StatefulWidget {
   final Schedule mapel;
-  const PretestPage({Key? key, required this.mapel}) : super(key: key);
+  const PosttestPage({Key? key, required this.mapel}) : super(key: key);
 
   @override
-  _PretestPageState createState() => _PretestPageState();
+  _PosttestPageState createState() => _PosttestPageState();
 }
 
-class _PretestPageState extends State<PretestPage> {
+class _PosttestPageState extends State<PosttestPage> {
   bool _isStarted = false;
   bool _isLoading = true;
   bool _isSubmitting = false;
-  PretestModel? _pretest;
+  PosttestModel? _posttest;
   int _currentIndex = 0;
   String? _selectedAnswer;
   int _studentId = 0;
   bool _sudahDikerjakan = false;
   Map<String, dynamic>? _hasilSebelumnya;
 
-  // Menyimpan semua jawaban user: {soal_id: "A"/"B"/"C"/"D"}
   final Map<int, String> _jawabanUser = {};
 
   @override
   void initState() {
     super.initState();
     _loadStudentId();
-    _fetchPretest();
+    _fetchPosttest();
   }
 
-  // Ambil student_id dari SharedPreferences
   Future<void> _loadStudentId() async {
     final prefs = await SharedPreferences.getInstance();
     final idStr = prefs.getString('student_id') ?? '0';
     setState(() {
       _studentId = int.tryParse(idStr) ?? 0;
     });
-    debugPrint("DEBUG: Student ID dari SharedPreferences = $_studentId");
+    debugPrint("DEBUG: Student ID = $_studentId");
   }
 
-  Future<void> _fetchPretest() async {
-    debugPrint("DEBUG: Slug ID yang dikirim = ${widget.mapel.slugId}");
+  Future<void> _fetchPosttest() async {
+    debugPrint("DEBUG: Slug ID = ${widget.mapel.slugId}");
     final String url =
-        "${PretestModel.baseUrl}/api/pretest/slug/${widget.mapel.slugId}";
+        "${PosttestModel.baseUrl}/api/posttest/slug/${widget.mapel.slugId}";
 
     try {
       final response = await http
@@ -62,10 +60,10 @@ class _PretestPageState extends State<PretestPage> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> result = jsonDecode(response.body);
         setState(() {
-          _pretest = PretestModel.fromJson(result['data']);
+          _posttest = PosttestModel.fromJson(result['data']);
           _isLoading = false;
         });
-        await _cekSudahDikerjakan(); // cek setelah pretest berhasil dimuat
+        await _cekSudahDikerjakan();
       } else {
         setState(() => _isLoading = false);
         _showSnackbar("Gagal memuat data: ${response.statusCode}");
@@ -78,12 +76,12 @@ class _PretestPageState extends State<PretestPage> {
   }
 
   Future<void> _cekSudahDikerjakan() async {
-    if (_studentId == 0 || _pretest == null) return;
+    if (_studentId == 0 || _posttest == null) return;
 
     try {
       final response = await http
           .get(Uri.parse(
-              "${PretestModel.baseUrl}/api/hasil-pretest/$_studentId/${_pretest!.id}"))
+              "${PosttestModel.baseUrl}/api/hasil-posttest/$_studentId/${_posttest!.id}"))
           .timeout(const Duration(seconds: 10));
 
       debugPrint("DEBUG cek hasil status = ${response.statusCode}");
@@ -98,16 +96,15 @@ class _PretestPageState extends State<PretestPage> {
           });
         }
       }
-      // 404 = belum pernah dikerjakan, biarkan lanjut normal
+      // 404 = belum pernah dikerjakan, lanjut normal
     } catch (e) {
       debugPrint("DEBUG cek hasil error: $e");
     }
   }
 
   Future<void> _submitJawaban() async {
-    // Validasi semua soal sudah dijawab
-    if (_jawabanUser.length < _pretest!.soal.length) {
-      final belumDijawab = _pretest!.soal.length - _jawabanUser.length;
+    if (_jawabanUser.length < _posttest!.soal.length) {
+      final belumDijawab = _posttest!.soal.length - _jawabanUser.length;
       _showSnackbar("Masih ada $belumDijawab soal yang belum dijawab!");
       return;
     }
@@ -126,11 +123,11 @@ class _PretestPageState extends State<PretestPage> {
     try {
       final response = await http
           .post(
-            Uri.parse("${PretestModel.baseUrl}/api/hasil-pretest"),
+            Uri.parse("${PosttestModel.baseUrl}/api/hasil-posttest"),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
               'student_id': _studentId,
-              'pretest_id': _pretest!.id,
+              'posttest_id': _posttest!.id,
               'jawaban': jawabanList,
             }),
           )
@@ -216,8 +213,8 @@ class _PretestPageState extends State<PretestPage> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                Navigator.pop(context); // tutup dialog
-                Navigator.pop(context); // kembali ke halaman sebelumnya
+                Navigator.pop(context);
+                Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: lulus ? Colors.green : const Color(0xFF1976D2),
@@ -251,9 +248,9 @@ class _PretestPageState extends State<PretestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1976D2),
+      backgroundColor: const Color(0xFF1565C0),
       appBar: AppBar(
-        title: Text(_isStarted ? (_pretest?.judul ?? "Kuis") : "Pre Test"),
+        title: Text(_isStarted ? (_posttest?.judul ?? "Kuis") : "Post Test"),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
@@ -282,22 +279,21 @@ class _PretestPageState extends State<PretestPage> {
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 12),
-            Text("Memuat soal pretest..."),
+            Text("Memuat soal posttest..."),
           ],
         ),
       );
     }
 
-    if (_pretest == null) {
+    if (_posttest == null) {
       return const Center(
         child: Text(
-          "Data Pretest tidak ditemukan.\nCek database slug_id Anda.",
+          "Data Posttest tidak ditemukan.\nCek database slug_id Anda.",
           textAlign: TextAlign.center,
         ),
       );
     }
 
-    // Blok jika sudah pernah mengerjakan
     if (_sudahDikerjakan && _hasilSebelumnya != null) {
       return _buildSudahDikerjakanUI();
     }
@@ -312,14 +308,13 @@ class _PretestPageState extends State<PretestPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Spacer(),
-          const Icon(Icons.assignment_turned_in,
-              size: 100, color: Colors.orange),
+          const Icon(Icons.assignment_turned_in, size: 100, color: Colors.blue),
           const SizedBox(height: 20),
-          Text(_pretest!.judul,
+          Text(_posttest!.judul,
               style:
                   const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
-          Text("Target KKM: ${_pretest!.kkm}",
+          Text("Target KKM: ${_posttest!.kkm}",
               style: const TextStyle(color: Colors.grey, fontSize: 16)),
           const SizedBox(height: 40),
           const Text(
@@ -333,7 +328,7 @@ class _PretestPageState extends State<PretestPage> {
             child: ElevatedButton(
               onPressed: () => setState(() => _isStarted = true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1976D2),
+                backgroundColor: const Color(0xFF1565C0),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
@@ -365,7 +360,7 @@ class _PretestPageState extends State<PretestPage> {
           ),
           const SizedBox(height: 20),
           Text(
-            lulus ? "Kamu Sudah Lulus!" : "Pretest Sudah Dikerjakan",
+            lulus ? "Kamu Sudah Lulus!" : "Posttest Sudah Dikerjakan",
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
@@ -404,7 +399,7 @@ class _PretestPageState extends State<PretestPage> {
           ),
           const SizedBox(height: 20),
           const Text(
-            "Pretest hanya bisa dikerjakan satu kali.",
+            "Posttest hanya bisa dikerjakan satu kali.",
             style: TextStyle(color: Colors.grey, fontSize: 13),
             textAlign: TextAlign.center,
           ),
@@ -415,7 +410,7 @@ class _PretestPageState extends State<PretestPage> {
             child: ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1976D2),
+                backgroundColor: const Color(0xFF1565C0),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
@@ -432,7 +427,7 @@ class _PretestPageState extends State<PretestPage> {
   }
 
   Widget _buildQuizUI() {
-    final soal = _pretest!.soal[_currentIndex];
+    final soal = _posttest!.soal[_currentIndex];
 
     return Padding(
       padding: const EdgeInsets.all(20.0),
@@ -442,13 +437,13 @@ class _PretestPageState extends State<PretestPage> {
             padding: const EdgeInsets.all(20),
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFF1976D2),
+              color: const Color(0xFF1565C0),
               borderRadius: BorderRadius.circular(15),
             ),
             child: Column(
               children: [
                 Text(
-                  "${_currentIndex + 1} dari ${_pretest!.soal.length}",
+                  "${_currentIndex + 1} dari ${_posttest!.soal.length}",
                   style: const TextStyle(color: Colors.white70),
                 ),
                 const SizedBox(height: 15),
@@ -473,23 +468,23 @@ class _PretestPageState extends State<PretestPage> {
                 ? const Center(child: CircularProgressIndicator())
                 : ElevatedButton(
                     onPressed: () {
-                      if (_currentIndex < _pretest!.soal.length - 1) {
+                      if (_currentIndex < _posttest!.soal.length - 1) {
                         setState(() {
                           _currentIndex++;
                           _selectedAnswer =
-                              _jawabanUser[_pretest!.soal[_currentIndex].id];
+                              _jawabanUser[_posttest!.soal[_currentIndex].id];
                         });
                       } else {
                         _submitJawaban();
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1976D2),
+                      backgroundColor: const Color(0xFF1565C0),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
                     child: Text(
-                      _currentIndex == _pretest!.soal.length - 1
+                      _currentIndex == _posttest!.soal.length - 1
                           ? "SELESAI"
                           : "LANJUT",
                       style: const TextStyle(color: Colors.white),

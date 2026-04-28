@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'subjectmatterpage.dart';
 import 'pretest_page.dart';
+import 'posttest_page.dart';
 
 class MapelPage extends StatefulWidget {
   @override
@@ -559,7 +560,8 @@ class AnimatedCard extends StatelessWidget {
                 ),
                 SizedBox(height: 20),
                 Divider(thickness: 1),
-                // Menu Aksi
+
+                // Button Materi
                 ListTile(
                   leading: Icon(Icons.assignment, color: Colors.green),
                   title: Text('Lihat Materi'),
@@ -573,6 +575,7 @@ class AnimatedCard extends StatelessWidget {
                     );
                   },
                 ),
+
                 // Button Pretest
                 ListTile(
                   leading: Icon(Icons.quiz, color: Colors.orange),
@@ -584,6 +587,22 @@ class AnimatedCard extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => PretestPage(mapel: mapel),
+                      ),
+                    );
+                  },
+                ),
+
+                // Button Posttest
+                ListTile(
+                  leading: Icon(Icons.quiz_outlined, color: Colors.blue),
+                  title: Text('Kerjakan Posttest'),
+                  trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    print("Tombol Posttest ditekan!");
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PosttestPage(mapel: mapel),
                       ),
                     );
                   },
