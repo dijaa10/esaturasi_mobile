@@ -51,10 +51,9 @@ class _LoginPageState extends State<LoginPage>
       print("Status Code: ${response.statusCode}");
       print("Response Body: ${response.body}");
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      final data = json.decode(response.body);
 
-        /// Laravel response tidak ada `status: success`, jadi dicek langsung
+      if (response.statusCode == 200) {
         if (data['token'] != null && data['student'] != null) {
           await saveUserData(data);
           showSuccessDialog();
@@ -64,6 +63,10 @@ class _LoginPageState extends State<LoginPage>
         }
       } else if (response.statusCode == 401) {
         showErrorDialog('NISN atau password salah. Silakan coba lagi.');
+      } else if (response.statusCode == 403) {
+        // ← TAMBAH INI
+        showErrorDialog(data['message'] ??
+            'Akun kamu tidak aktif pada tahun ajaran ini. Hubungi admin.');
       } else {
         showErrorDialog('Gagal menghubungi server (${response.statusCode}).');
       }
