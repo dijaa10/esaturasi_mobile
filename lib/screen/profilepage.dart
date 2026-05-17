@@ -18,7 +18,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String namaKelas = "Memuat...";
   String namaJurusan = "Memuat...";
   String fotoProfil = "";
-  final String baseUrl = "http://10.0.2.2:8000/";
+  final String baseUrl = "http://192.168.1.57:8000/";
   final ImagePicker _picker = ImagePicker();
 
   // Premium UI colors

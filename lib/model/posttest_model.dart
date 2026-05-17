@@ -17,7 +17,7 @@ class PosttestModel {
     required this.soal,
   });
 
-  static const String baseUrl = "http://10.0.2.2:8000";
+  static const String baseUrl = "http://192.168.1.57:8000";
 
   factory PosttestModel.fromJson(Map<String, dynamic> json) {
     var listSoal = json['soal'] as List? ?? [];

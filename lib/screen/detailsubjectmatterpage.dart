@@ -10,6 +10,7 @@ import 'package:path/path.dart' as path;
 import '../model/slug.dart';
 import '../model/subjectmatter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
@@ -29,11 +30,8 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
   final ScrollController _scrollController = ScrollController();
   final Dio _dio = Dio();
 
-  // Change baseUrl to use IP address that works better with emulators
-  final String baseUrl = "http://10.0.2.2:8000/";
-  // Track selected material name for the app bar title
+  final String baseUrl = "http://192.168.1.57:8000";
   String _selectedMaterialName = "";
-  // Flag to remember if PDF viewer had errors
   bool _hasPDFOpenError = false;
 
   @override
@@ -61,7 +59,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
       final uri = Uri.parse("${baseUrl}/api/materials/slug/$slugId");
       print("Request URL: $uri");
 
-      // Add proper headers to request
       final response = await http.get(
         uri,
         headers: {
@@ -83,11 +80,9 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
           throw Exception("Server returned empty response");
         }
 
-        // Print the first few characters to debug
         print(
             "First 50 chars of response: ${response.body.length > 50 ? response.body.substring(0, 50) + '...' : response.body}");
 
-        // Trim any whitespace or BOM characters that might be present
         final String cleanedResponse = response.body.trim();
 
         dynamic decoded;
@@ -109,11 +104,8 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         print("Parsed materials data length: ${data.length}");
 
         setState(() {
-          // Properly construct Subjectmatter objects from the JSON data
           materials = data.map((item) => Subjectmatter.fromJson(item)).toList();
           _isLoading = false;
-
-          // Set app bar title to slug name if available
           _selectedMaterialName = widget.slug.title ?? "Material Files";
         });
       } else {
@@ -217,37 +209,30 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
 
   Future<String> _getDocumentsPath() async {
     if (Platform.isAndroid) {
-      // Untuk Android, gunakan Documents directory
       return '/storage/emulated/0/Documents';
     } else if (Platform.isIOS) {
-      // Untuk iOS, gunakan Documents directory
       final directory = await getApplicationDocumentsDirectory();
       return directory.path;
     }
 
-    // Fallback ke application documents directory
     final directory = await getApplicationDocumentsDirectory();
     return directory.path;
   }
 
-// 3. Tambahkan method untuk request permission storage
   Future<bool> _requestStoragePermission() async {
     if (Platform.isAndroid) {
       final deviceInfo = DeviceInfoPlugin();
       final androidInfo = await deviceInfo.androidInfo;
 
       if (androidInfo.version.sdkInt >= 33) {
-        // Android 13+ - tidak perlu permission untuk menulis ke Downloads
         return true;
       } else if (androidInfo.version.sdkInt >= 30) {
-        // Android 11-12 - gunakan MANAGE_EXTERNAL_STORAGE
         var status = await Permission.manageExternalStorage.status;
         if (status != PermissionStatus.granted) {
           status = await Permission.manageExternalStorage.request();
         }
         return status == PermissionStatus.granted;
       } else {
-        // Android 10 ke bawah - gunakan WRITE_EXTERNAL_STORAGE
         var status = await Permission.storage.status;
         if (status != PermissionStatus.granted) {
           status = await Permission.storage.request();
@@ -255,22 +240,18 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         return status == PermissionStatus.granted;
       }
     }
-    return true; // iOS tidak perlu permission khusus
+    return true;
   }
 
-// 4. Tambahkan method untuk download ke Documents folder
   Future<File> _downloadToDocuments(String url, String fileName) async {
     try {
-      // Request permission terlebih dahulu
       bool hasPermission = await _requestStoragePermission();
       if (!hasPermission) {
         throw Exception("Storage permission denied");
       }
 
-      // Get Documents path
       final documentsPath = await _getDocumentsPath();
 
-      // Pastikan folder Documents ada
       final documentsDir = Directory(documentsPath);
       if (!await documentsDir.exists()) {
         await documentsDir.create(recursive: true);
@@ -279,9 +260,7 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
       final filePath = '$documentsPath/$fileName';
       final file = File(filePath);
 
-      // Check if file already exists
       if (await file.exists()) {
-        // Buat nama file unik jika sudah ada
         final fileNameWithoutExt = fileName.split('.').first;
         final extension = fileName.split('.').last;
         int counter = 1;
@@ -305,10 +284,8 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
     }
   }
 
-// 5. Method helper untuk melakukan download
   Future<File> _performDownload(
       String url, String filePath, String fileName) async {
-    // Show download progress dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -335,15 +312,13 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
     );
 
     try {
-      // Clear previous interceptors
       _dio.interceptors.clear();
 
-      // Configure timeout settings
-      _dio.options.connectTimeout = 30000;
-      _dio.options.receiveTimeout = 30000;
-      _dio.options.sendTimeout = 30000;
+      // FIX: Dio v5 menggunakan Duration, bukan int milliseconds
+      _dio.options.connectTimeout = const Duration(seconds: 30);
+      _dio.options.receiveTimeout = const Duration(seconds: 30);
+      _dio.options.sendTimeout = const Duration(seconds: 30);
 
-      // Perform download
       final response = await _dio.download(
         url,
         filePath,
@@ -355,7 +330,8 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
           },
           followRedirects: true,
           validateStatus: (status) => status != null && status < 500,
-          receiveTimeout: 60000,
+          // FIX: Dio v5 menggunakan Duration
+          receiveTimeout: const Duration(seconds: 60),
         ),
         onReceiveProgress: (received, total) {
           if (total != -1) {
@@ -365,7 +341,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         },
       );
 
-      // Close dialog
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
@@ -375,7 +350,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
           response.statusCode! < 300) {
         final file = File(filePath);
         if (await file.exists() && await file.length() > 0) {
-          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('File berhasil diunduh: $fileName'),
@@ -397,7 +371,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         throw Exception("Server returned status code: ${response.statusCode}");
       }
     } catch (e) {
-      // Close dialog in case of error
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       }
@@ -412,15 +385,12 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
       return;
     }
 
-    // Update the app bar title to the clicked material name
     setState(() {
       _selectedMaterialName = materi.title;
     });
 
-    // Extract file extension from file_path instead of title
     final String fileExtension = _getFileExtension(materi.filePath);
 
-    // Construct the correct file URL
     final String normalizedPath = materi.filePath.startsWith('storage/')
         ? materi.filePath
         : materi.filePath;
@@ -453,9 +423,7 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
               _isLoading = false;
             });
 
-            // Check if the downloaded file exists and has content
             if (await localFile.exists() && await localFile.length() > 0) {
-              // Validate PDF file format
               if (await _validatePDFFile(localFile)) {
                 _openPdf(localFile.path, materi.title);
               } else {
@@ -485,14 +453,12 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         case 'avi':
         case 'mov':
           try {
-            // Download langsung ke folder Documents
             final localFile = await _downloadToDocuments(
                 fileUrl, '${materi.title}.${fileExtension}');
             setState(() {
               _isLoading = false;
             });
 
-            // Otomatis buka file setelah download selesai
             await _openWithCompatibleApp(localFile);
           } catch (e) {
             setState(() {
@@ -505,7 +471,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
 
         default:
           try {
-            // For other file types, download locally
             final localFile = await _downloadFile(
                 fileUrl, '${materi.title}.${fileExtension}');
             setState(() {
@@ -535,15 +500,12 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
     }
   }
 
-  // Validate the PDF file header to ensure it's a valid PDF
   Future<bool> _validatePDFFile(File file) async {
     try {
-      // Read the first few bytes of the file to check its header
       final RandomAccessFile raf = await file.open(mode: FileMode.read);
-      final List<int> header = await raf.read(5); // Read first 5 bytes
+      final List<int> header = await raf.read(5);
       await raf.close();
 
-      // Check if header matches the PDF signature (%PDF-)
       return String.fromCharCodes(header) == '%PDF-';
     } catch (e) {
       print("Error validating PDF file: $e");
@@ -553,18 +515,15 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
 
   Future<File> _downloadFile(String url, String fileName) async {
     try {
-      // Get the application documents directory
       final directory = await getApplicationDocumentsDirectory();
       final filePath = '${directory.path}/$fileName';
       final file = File(filePath);
 
-      // Check if file already exists and has content
       if (await file.exists() && await file.length() > 0) {
         print("File already exists locally, using cached version");
         return file;
       }
 
-      // Show a download progress
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -585,10 +544,8 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         },
       );
 
-      // Clear previous interceptors to avoid duplication
       _dio.interceptors.clear();
 
-      // Add logging interceptor for debugging
       _dio.interceptors.add(LogInterceptor(
         request: true,
         requestHeader: true,
@@ -596,21 +553,18 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         responseBody: false,
       ));
 
-      // Configure timeout settings
-      _dio.options.connectTimeout = 30000; // 30 seconds in milliseconds
-      _dio.options.receiveTimeout = 30000; // 30 seconds in milliseconds
-      _dio.options.sendTimeout = 30000; // 30 seconds in milliseconds
+      // FIX: Dio v5 menggunakan Duration, bukan int milliseconds
+      _dio.options.connectTimeout = const Duration(seconds: 30);
+      _dio.options.receiveTimeout = const Duration(seconds: 30);
+      _dio.options.sendTimeout = const Duration(seconds: 30);
 
-      // Setup retry variables
       int retryCount = 0;
       const int maxRetries = 3;
       bool downloadSuccess = false;
       Exception? lastException;
 
-      // Implement exponential backoff for retries
       while (!downloadSuccess && retryCount < maxRetries) {
         try {
-          // Perform download with proper headers
           final response = await _dio.download(
             url,
             filePath,
@@ -622,7 +576,8 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
               },
               followRedirects: true,
               validateStatus: (status) => status != null && status < 500,
-              receiveTimeout: 60000, // 60 seconds in milliseconds
+              // FIX: Dio v5 menggunakan Duration
+              receiveTimeout: const Duration(seconds: 60),
             ),
             onReceiveProgress: (received, total) {
               if (total != -1) {
@@ -633,7 +588,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
             deleteOnError: false,
           );
 
-          // Check response status code
           if (response.statusCode != null &&
               response.statusCode! >= 200 &&
               response.statusCode! < 300) {
@@ -648,37 +602,32 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
           print("Download failed (attempt $retryCount): $e");
 
           if (retryCount >= maxRetries) {
-            throw e; // Re-throw if max retries reached
+            throw e;
           }
 
-          // Exponential backoff delay
           final delay = Duration(seconds: retryCount * 2);
           print("Waiting ${delay.inSeconds} seconds before retry");
           await Future.delayed(delay);
         }
       }
 
-      // Make sure the dialog is closed
       if (Navigator.canPop(context)) {
-        Navigator.pop(context); // Close dialog
+        Navigator.pop(context);
       }
 
-      // Verify file was downloaded successfully
       if (!downloadSuccess) {
         throw lastException ??
             Exception("Download failed after $maxRetries attempts");
       }
 
-      // Verify file exists and has content
       if (await file.exists() && await file.length() > 0) {
         return file;
       } else {
         throw Exception("Downloaded file is empty or does not exist");
       }
     } catch (e) {
-      // Make sure the dialog is closed
       if (Navigator.canPop(context)) {
-        Navigator.pop(context); // Close dialog in case of error
+        Navigator.pop(context);
       }
 
       print("Final download error: $e");
@@ -686,11 +635,11 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
     }
   }
 
-  // Use Share.shareFiles for safely sharing files with other apps
+  // FIX: share_plus v10 — shareFiles diganti shareXFiles dengan XFile
   Future<void> _openWithCompatibleApp(File file) async {
     try {
-      await Share.shareFiles(
-        [file.path],
+      await Share.shareXFiles(
+        [XFile(file.path)],
         sharePositionOrigin: Rect.fromLTWH(0, 0, 10, 10),
       );
       print("File shared successfully.");
@@ -703,7 +652,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
 
   void _openPdf(String filePath, String fileName) {
     try {
-      // Verify the file exists and has content before attempting to open it
       final File pdfFile = File(filePath);
       if (!pdfFile.existsSync()) {
         _showErrorDialog("File Not Found",
@@ -717,7 +665,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
         return;
       }
 
-      // Check if previous attempts to use PDFView failed
       if (_hasPDFOpenError) {
         _openWithCompatibleApp(pdfFile);
         return;
@@ -760,9 +707,8 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
               preventLinkNavigation: false,
               onError: (error) {
                 print("Error loading PDF: $error");
-                Navigator.pop(context); // Go back if PDF fails to load
+                Navigator.pop(context);
 
-                // Flag to remember that PDFView had an error to use external app directly next time
                 setState(() {
                   _hasPDFOpenError = true;
                 });
@@ -770,7 +716,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
                 _showErrorDialog(
                     "PDF Error", "Could not load the PDF file: $error");
 
-                // Try to open with external app
                 _openWithCompatibleApp(pdfFile);
               },
               onPageError: (page, error) {
@@ -784,7 +729,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
       print("Exception when opening PDF: $e");
       _showErrorDialog("Error Opening PDF", "An unexpected error occurred: $e");
 
-      // Try fallback to external app
       _openWithCompatibleApp(File(filePath));
     }
   }
@@ -814,9 +758,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
             ),
             backgroundColor: const Color(0xFF1976D2),
             elevation: 0,
-            actions: [
-              // Add option to open with external app
-            ],
           ),
           body: Center(
             child: InteractiveViewer(
@@ -861,7 +802,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
                       ElevatedButton(
                         onPressed: () async {
                           Navigator.pop(context);
-                          // Try downloading the image directly
                           try {
                             final localFile =
                                 await _downloadFile(url, fileName);
@@ -1038,7 +978,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
   }
 
   Widget _buildSimpleFileCard(Subjectmatter materi) {
-    // Get file extension from filePath instead of title for correct icon display
     final String fileExtension = _getFileExtension(materi.filePath);
     final IconData fileIcon = _getFileIcon(fileExtension);
     final Color fileColor = _getFileColor(fileExtension);
@@ -1091,7 +1030,6 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
   }
 }
 
-// Custom exception for timeouts
 class TimeoutException implements Exception {
   final String message;
   TimeoutException(this.message);

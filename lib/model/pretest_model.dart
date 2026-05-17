@@ -17,8 +17,8 @@ class PretestModel {
     required this.soal,
   });
 
-  // Gunakan IP 10.0.2.2 untuk Emulator Android
-  static const String baseUrl = "http://10.0.2.2:8000";
+  // Gunakan IP 192.168.1.57 untuk Emulator Android
+  static const String baseUrl = "http://192.168.1.57:8000";
 
   factory PretestModel.fromJson(Map<String, dynamic> json) {
     var listSoal = json['soal'] as List? ?? [];

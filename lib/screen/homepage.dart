@@ -23,7 +23,7 @@ class HomePageState extends State<HomePage> {
   String name = "";
   String nameClass = "Memuat...";
   String fotoProfil = "";
-  final String baseUrl = "http://10.0.2.2:8000/";
+  final String baseUrl = "http://192.168.1.57:8000/";
 
   int _lateTasksCount = 0;
   String currentDate = "";
